@@ -4,7 +4,15 @@ What changed in each version of FABconfig. Versions are dates (`vYY.MM.DD`); see
 
 ## Unreleased
 
+## v26.11.21.1
+
+### Added
+- **Remove Configurations** page (formerly the separate internal tool FABclean): lists every Fabrication configuration registered on this PC and removes the ones you tick, deleting their registry entries for every Fabrication version and, optionally, moving their folders to the Recycle Bin. Nothing is ticked for you; configurations FABconfig didn't make are labelled "Set up by hand", and you confirm before anything is removed. It never removes a drive or share root, a database folder, FABconfig's own folder, or a folder another configuration still uses.
+
 ### Changed
+- Sidebar items are now **Add Configuration**, **Remove Configurations** and **What's this?**. The window is wider (1180 × 640) to fit them and the list.
+- The window title is "FABconfig - Fabrication Configurations".
+- In the dark theme the configuration list, its column titles, scroll bars and the File/Help menus are dark too.
 - The compiled file is always named `FABconfig.exe`, without the version.
 
 ## v26.11.21

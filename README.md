@@ -1,8 +1,8 @@
 # FABconfig
 
-FABconfig adds an Autodesk Fabrication database to Fabrication (Revit, CADmep, ESTmep, CAMduct) as a named configuration, so the database appears in Fabrication's configuration list at start-up. It creates the configuration folder, writes a `map.ini` that points back to the shared database, and registers the configuration with each recent Fabrication version, all in one click.
+FABconfig adds an Autodesk Fabrication database to Fabrication (Revit, CADmep, ESTmep, CAMduct) as a named configuration, so the database appears in Fabrication's configuration list at start-up. It can also remove configurations you no longer need. It creates the configuration folder, writes a `map.ini` that points back to the shared database, and registers the configuration with each recent Fabrication version, all in one click.
 
-![FABconfig's main window in the dark theme, with the configuration name, location and database folder, and the Fabrication versions it registers with in the sidebar](docs/screenshot.png)
+![FABconfig's Add Configuration page in the dark theme, with the configuration name, location and database folder; the sidebar has Add Configuration, Remove Configurations and What's this?, and the Fabrication versions it registers with](docs/screenshot.png)
 
 FABconfig is written in [AutoHotkey v2](https://www.autohotkey.com/) and can be run as a script or compiled into a standalone `.exe`. It is developed by Virtual Building Supply, LLC and released under the GNU General Public License v3.
 
@@ -47,9 +47,15 @@ Nothing in the database folder itself is changed. Running FABconfig again with t
 - If a configuration with the same name already exists, FABconfig shows which Fabrication versions it's registered with and where it points (and warns if it wasn't made by FABconfig), then asks before overwriting it. It checks every Fabrication version in the registry, not just the range above, and an overwrite updates all of them. If the name is new but the chosen folder already has a `map.ini`, it asks before overwriting that too. Whenever it overwrites a `map.ini`, the previous one is kept next to it as `map.ini.bak` (only the most recent one is kept).
 - If any file can't be written or any registry entry can't be saved, FABconfig says so instead of reporting success.
 
-### Removing a configuration
+### Removing configurations
 
-To remove a configuration by hand, delete its `Configuration\<name>` key under each `HKEY_CURRENT_USER\Software\Autodesk\Fabrication <year>` key, then delete the configuration folder. Close Fabrication first.
+Close Fabrication, then open **Remove Configurations** in the sidebar. It lists every configuration registered for you, with its folder, the Fabrication versions it's registered with, and whether FABconfig made it or it was set up by hand. Nothing is ticked for you.
+
+1. Tick the configurations to remove.
+2. Leave **Also move each folder to the Recycle Bin** on to remove their folders too.
+3. Click **Remove selected** and confirm. The confirmation lists each configuration, its folder, and how many other items (projects, backups) the folder holds.
+
+FABconfig deletes each configuration's `Configuration\<name>` key under every `HKEY_CURRENT_USER\Software\Autodesk\Fabrication <year>` key, moves the folder to the Recycle Bin (it can be restored from there), and removes `C:\fabrication-configurations` if that's left empty. It never removes a drive or share root, a database folder, the folder FABconfig runs from, or a folder that another configuration still uses.
 
 ## Building the .exe
 

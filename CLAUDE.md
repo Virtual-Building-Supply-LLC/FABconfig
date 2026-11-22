@@ -1,6 +1,6 @@
 # FABconfig
 
-FABconfig is a Windows GUI tool, written in AutoHotkey v2, that registers an Autodesk Fabrication database as a named Fabrication configuration. It creates a configuration folder, writes a `map.ini` pointing back to the shared database, copies `config.png`, and writes `HKCU\Software\Autodesk\Fabrication <year>\Configuration\<name>` → `Path` for years A_YYYY-4 to A_YYYY+2. It also remembers the light/dark theme choice in its own HKCU key. See README.md for user-facing behavior.
+FABconfig is a Windows GUI tool, written in AutoHotkey v2, that registers an Autodesk Fabrication database as a named Fabrication configuration, and (Remove Configurations page, formerly the internal tool FABclean) removes configurations. It creates a configuration folder, writes a `map.ini` pointing back to the shared database, copies `config.png`, and writes `HKCU\Software\Autodesk\Fabrication <year>\Configuration\<name>` → `Path` for years A_YYYY-4 to A_YYYY+2. It also remembers the light/dark theme choice in its own HKCU key. See README.md for user-facing behavior.
 
 Owner and developer: Scott Hendricks, Virtual Building Supply, LLC (VBS). License: GPL-3.0-or-later with section 7 additional terms (keep author attribution; no rights to VBS name/logo).
 
@@ -39,6 +39,12 @@ Owner and developer: Scott Hendricks, Virtual Building Supply, LLC (VBS). Licens
 - Avoid multi-line ternaries (lines starting with `?` / `:`); use if/else.
 - When editing with scripted find/replace, make sure a replacement doesn't split a comment line onto code (an earlier edit left the tail of a comment after a statement and broke the script).
 
+## Removing configurations safely (rules carried over from FABclean)
+
+- Only act on folders registered as configurations (a `Path` under `HKCU\Software\Autodesk\Fabrication <year>\Configuration\<name>`). Never scan the disk for the map.ini marker and delete what matches: VBS databases have the same first line.
+- Never delete permanently: folders go to the Recycle Bin (`FileRecycle`). Never tick anything for the user, and always confirm, listing what will go and how many other items each folder holds.
+- `FolderCanGo()` refuses a drive or share root, the folder FABconfig runs from, the database folder (or one containing it), any folder that `IsDatabaseFolder()` accepts, and a folder another configuration that's being kept still uses.
+
 ## Databases vs. configuration folders
 
 - VBS databases' own map.ini files also start with `# Created by Virtual Building Supply`, so that marker does **not** tell a configuration folder from a database (relying on it made FABconfig reject its own database folder). `IsConfigFolder()` instead checks whether `[PROGRAM PATHS] Main` resolves to a different folder; a database's map.ini has `Main=.`. Use the marker (`HasMarker()`) only on folders already known to be configurations.
@@ -46,6 +52,8 @@ Owner and developer: Scott Hendricks, Virtual Building Supply, LLC (VBS). Licens
 ## UI structure
 
 - Laid out like MapQuery Studio: sidebar (app icon tile + name, pill-shaped nav items New configuration / What's this? that fill with the accent when selected, a "REGISTERS WITH" section of version chips, Exit at the bottom), a top bar (File and Help menus, theme button on the right), the page, and a status bar (database folder name on the left, version on the right). Cards have a 1px border (`PlaceCard`: a border layer under a fill layer).
+- Views: `main` (Add Configuration), `remove` (Remove Configurations) and `about`; each view's controls are in `mainCtrls` / `removeCtrls` / `aboutCtrls`, and `ShowView()` switches them. The status bar text comes from `StatusText()` (database name, or the configuration count on the Remove page).
+- Remove view: info banner, a ListView of configurations (`FindConfigs()` groups registry entries by name and folder; `RefreshConfigs()` fills the list, all unticked), the Recycle Bin checkbox (no text of its own: a themed checkbox ignores the text color, so a separate label toggles it), Refresh and Remove selected (danger color). In the dark theme, `SetControlThemes()` opts the app into dark mode through uxtheme's unnamed functions (ordinals 135 SetPreferredAppMode, 136 FlushMenuThemes, 133 AllowDarkModeForWindow), which also makes the menus dark, and `LvSubclass` gives the list header its text color by answering NM_CUSTOMDRAW.
 - Main view: an info banner (with "How it works…") and the "Configuration details" card (name, location + Browse, database folder + Browse, Create Configuration button at bottom right).
 - About view ("What's this?"): four numbered step tiles and a text card ending with the VBS logo and the GPL copyright/no-warranty notice.
 - Clickable items are "groups" (`NewGroup`/`AddPart`) with hover color roles, a hand cursor and a polling timer to clear hover. Buttons with an outline keep the outline (`grp.Edge`) out of the group's parts.

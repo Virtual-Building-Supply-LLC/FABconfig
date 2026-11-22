@@ -51,11 +51,11 @@ APP_NAME    := "FABconfig"
 ; "v") into the .exe's version details, so they must stay directly
 ; after this line. A second release on the same day adds a fourth number,
 ; like "v26.10.24.1".
-APP_VERSION := "v26.11.21"
+APP_VERSION := "v26.11.21.1"
 ;@Ahk2Exe-Let U_version = %A_PriorLine~^.*"v([\d.]+)".*$~$1%
 ;@Ahk2Exe-SetVersion %U_version%
 ;@Ahk2Exe-ExeName FABconfig.exe
-WIN_TITLE   := "FABconfig - Add Fabrication Configuration"
+WIN_TITLE   := "FABconfig - Fabrication Configurations"
 CONFIG_ROOT := "C:\fabrication-configurations"
 ; FABconfig marks the map.ini it writes with this first line. VBS databases'
 ; own map.ini files start with it as well.
@@ -88,6 +88,7 @@ THEMES := Map(
         border: "383C46", edge: "545B69", field: "1E2026",
         btn: "3A3F4B", btnHover: "4A505E", navHover: "2A2E36",
         accent: "2F68E0", accentHover: "3A75F0", accentText: "8DB4FF", onAccent: "FFFFFF",
+        danger: "B3261E", dangerHover: "C9342B",
         soft: "222D43", chip: "28344A", tile: "5B8FF9"
     },
     "light", {
@@ -96,6 +97,7 @@ THEMES := Map(
         border: "D6DBE3", edge: "C9D0DB", field: "FBFCFD",
         btn: "ECEFF4", btnHover: "E0E6F0", navHover: "EEF1F6",
         accent: "2563EB", accentHover: "1D4ED8", accentText: "1D4ED8", onAccent: "FFFFFF",
+        danger: "B3261E", dangerHover: "8C1D18",
         soft: "E3EBFD", chip: "E3EBFD", tile: "5B8FF9"
     }
 )
@@ -126,6 +128,8 @@ FABconfig adds the Fabrication database in this folder to Autodesk Fabrication (
 The map.ini it writes points the Database, Items, Images, Profiles, Reports and Scripts folders at this database. Projects, DXFs, Blocks and Backups stay in the configuration folder, so local work stays separate from the shared database.
 
 Nothing in the database folder itself is changed. Running it again with the same name updates that configuration.
+
+Remove Configurations lists every configuration registered on this PC and removes the ones you tick: their registry entries for every Fabrication version and, if you choose, their folders (to the Recycle Bin, so they can be restored).
 )"
 COPYRIGHT_TEXT := "Copyright © 2026 Virtual Building Supply, LLC. FABconfig is free software under the GNU General Public License v3 and comes with ABSOLUTELY NO WARRANTY. See the LICENSE file for details."
 
@@ -145,7 +149,9 @@ currentView := "main"
 locTouched  := false   ; true once the user edits or browses the location
 settingLoc  := false
 mainCtrls   := []
+removeCtrls := []
 aboutCtrls  := []
+configs     := []      ; Remove view: one entry per list row
 ctl    := {}
 groups := []           ; clickable groups (nav items, buttons, menus)
 hoverMap := Map()      ; control hwnd -> group id
@@ -190,8 +196,9 @@ if tileBmp {
 SetF("s13")
 ctl.AppName := AddCtl("Text", "+0x200", APP_NAME, "panel", "text")
 
-navMain  := MakeNav(0xE710, "New configuration", (*) => ShowView("main"))
-navAbout := MakeNav(0xE897, "What's this?",      (*) => ShowView("about"))
+navMain   := MakeNav(0xE710, "Add Configuration",     (*) => ShowView("main"))
+navRemove := MakeNav(0xE74D, "Remove Configurations", (*) => ShowView("remove"))
+navAbout  := MakeNav(0xE897, "What's this?",          (*) => ShowView("about"))
 
 ctl.Div1 := AddCtl("Text", "", "", "border")
 SetF("s8")
@@ -208,7 +215,8 @@ navExit := MakeNav(0xE7E8, "Exit", (*) => ExitApp())
 
 ; ---- Top bar: menus and the theme button ----
 fileMenu := Menu()
-fileMenu.Add("New configuration", (*) => ShowView("main"))
+fileMenu.Add("Add Configuration", (*) => ShowView("main"))
+fileMenu.Add("Remove Configurations", (*) => ShowView("remove"))
 fileMenu.Add()
 fileMenu.Add("Exit", (*) => ExitApp())
 helpMenu := Menu()
@@ -259,6 +267,38 @@ ctl.Loc.OnEvent("Change", OnLocChange)
 ; Enter key saves (a hidden default button)
 AddCtl("Button", "Default Hidden", "Save").OnEvent("Click", (*) => (currentView = "main") && SaveConfig())
 
+; ---- Remove view (formerly FABclean) ----
+ctl.RBanner := AddCtl("Text", "", "", "soft")
+SetF("s12", ICON_FONT)
+ctl.RBannerIcon := AddCtl("Text", "Center +0x200", Chr(0xE946), "soft", "accentText")
+SetF("s10")
+ctl.RBannerText := AddCtl("Text", "+0x200", "Fabrication configurations registered on this PC. Close Fabrication before removing any.", "soft", "text")
+ctl.RCardEdge := AddCtl("Text", "", "", "border")
+ctl.RCard     := AddCtl("Text", "", "", "card")
+SetF("s12", FONT_SEMI)
+ctl.RCardTitle := AddCtl("Text", "", "Configurations", "card", "text")
+SetF("s9")
+ctl.RHint := AddCtl("Text", "", "Tick the ones to remove. Nothing is ticked for you.", "card", "muted")
+ctl.LvEdge := AddCtl("Text", "", "", "border")
+SetF("s10")
+lv := AddCtl("ListView", "Checked -E0x200 +LV0x10000 +LV0x20 -Multi"
+    , ["Name", "Folder", "Versions", "Made by"], "card", "text")
+ctl.Empty := AddCtl("Text", "Center", "No Fabrication configurations found.", "card", "muted")
+; A themed checkbox ignores the text color, so the box has no text of its own
+; and a separate label (which toggles it) carries the text.
+ctl.Recycle := AddCtl("Checkbox", "Checked", "", "card")
+ctl.RecycleLbl := AddCtl("Text", "+0x200", "Also move each folder to the Recycle Bin", "card", "text")
+ctl.RecycleLbl.OnEvent("Click", (*) => ctl.Recycle.Value := !ctl.Recycle.Value)
+removeCtrls.Push(ctl.RBanner, ctl.RBannerIcon, ctl.RBannerText, ctl.RCardEdge, ctl.RCard, ctl.RCardTitle
+    , ctl.RHint, ctl.LvEdge, lv, ctl.Recycle, ctl.RecycleLbl)
+btnRefresh := MakeButton(0xE72C, "Refresh", "btn", "btnHover", "text", (*) => RefreshConfigs(), true, removeCtrls)
+btnRemove  := MakeButton(0xE74D, "Remove selected", "danger", "dangerHover", "onAccent", RemoveChecked, false, removeCtrls, true)
+
+; The list's header asks the list how to draw its column titles
+; (NM_CUSTOMDRAW); the list is subclassed to give them the text color.
+lvHdr := SendMessage(0x101F, 0, 0, lv)   ; LVM_GETHEADER
+DllCall("comctl32\SetWindowSubclass", "ptr", lv.Hwnd, "ptr", CallbackCreate(LvSubclass, , 6), "uptr", 1, "uptr", 0)
+
 ; ---- About view ----
 SetF("s13", FONT_SEMI)
 ctl.AHead := AddCtl("Text", "", "What this program does", "bg", "text")
@@ -293,13 +333,15 @@ aboutCtrls.Push(ctl.AEdge, ctl.ACard, ctl.ABody, ctl.Badge, ctl.ACopy)
 
 ;======================= Show window ================================
 MonitorGetWorkArea(MonitorGetPrimary(), &waL, &waT, &waR, &waB)
-winW := Min(S(1104), waR - waL - S(40))
-winH := Min(S(600), waB - waT - S(60))
+winW := Min(S(1180), waR - waL - S(40))
+winH := Min(S(640), waB - waT - S(60))
 g.Opt("+MinSize" winW "x" winH)
 
 StackControls()
+RefreshConfigs()
 ShowView("main")
 Layout(winW, winH)
+SetControlThemes()
 SetTitleBarTheme()
 g.Show("w" winW " h" winH)
 ctl.Name.Focus()
@@ -531,11 +573,13 @@ ApplyTheme() {
         if (bmp := LoadPng("FABCONFIG_ICON", APP_PNG, S(34), Clr("panel")))
             ctl.Tile.Value := "HBITMAP:" bmp
     }
+    SetControlThemes()
     SetTitleBarTheme()
     g.GetClientPos(, , &w, &h)
     Layout(w, h)
-    SetNavActive(navMain,  currentView = "main")
-    SetNavActive(navAbout, currentView = "about")
+    SetNavActive(navMain,   currentView = "main")
+    SetNavActive(navRemove, currentView = "remove")
+    SetNavActive(navAbout,  currentView = "about")
     DllCall("RedrawWindow", "ptr", g.Hwnd, "ptr", 0, "ptr", 0, "uint", 0x185)
 }
 
@@ -548,7 +592,50 @@ SetTitleBarTheme() {
         , "uint", 0x37)   ; FRAMECHANGED|NOMOVE|NOSIZE|NOZORDER|NOACTIVATE: redraw the title bar
 }
 
+; Dark list header, scroll bars, checkbox and menus in the dark theme. Windows
+; only draws these dark once the app opts into dark mode, through uxtheme
+; functions that have no names, only ordinals: 135 SetPreferredAppMode
+; (2 = dark, 3 = light), 136 FlushMenuThemes, 133 AllowDarkModeForWindow.
+SetControlThemes() {
+    dark := theme = "dark"
+    try {
+        ux := DllCall("LoadLibrary", "str", "uxtheme", "ptr")
+        DllCall(DllCall("GetProcAddress", "ptr", ux, "ptr", 135, "ptr"), "int", dark ? 2 : 3)
+        DllCall(DllCall("GetProcAddress", "ptr", ux, "ptr", 136, "ptr"))
+        allow := DllCall("GetProcAddress", "ptr", ux, "ptr", 133, "ptr")
+        DllCall(allow, "ptr", lv.Hwnd, "int", dark)
+        DllCall(allow, "ptr", lvHdr, "int", dark)
+    }
+    DllCall("uxtheme\SetWindowTheme", "ptr", lv.Hwnd, "str", dark ? "DarkMode_Explorer" : "Explorer", "ptr", 0)
+    DllCall("uxtheme\SetWindowTheme", "ptr", lvHdr, "str", dark ? "DarkMode_ItemsView" : "ItemsView", "ptr", 0)
+    DllCall("uxtheme\SetWindowTheme", "ptr", ctl.Recycle.Hwnd, "str", dark ? "DarkMode_Explorer" : "Explorer", "ptr", 0)
+}
+
+LvSubclass(hwnd, msg, wParam, lParam, id, ref) {
+    ; WM_NOTIFY from the header, NM_CUSTOMDRAW (-12). NMHDR is 3 pointer-sized
+    ; fields; NMCUSTOMDRAW then has dwDrawStage and, a pointer further, the hdc.
+    if (msg = 0x4E && NumGet(lParam, 0, "ptr") = lvHdr && NumGet(lParam, 2 * A_PtrSize, "int") = -12) {
+        stage := NumGet(lParam, 3 * A_PtrSize, "uint")
+        if (stage = 1)                   ; CDDS_PREPAINT
+            return 0x20                  ; CDRF_NOTIFYITEMDRAW
+        if (stage = 0x10001) {           ; CDDS_ITEMPREPAINT
+            rgb := Clr("text")           ; COLORREF is BGR
+            bgr := (Integer("0x" SubStr(rgb, 5, 2)) << 16) | (Integer("0x" SubStr(rgb, 3, 2)) << 8) | Integer("0x" SubStr(rgb, 1, 2))
+            DllCall("SetTextColor", "ptr", NumGet(lParam, 4 * A_PtrSize, "ptr"), "uint", bgr)
+            return 0                     ; CDRF_DEFAULT
+        }
+    }
+    return DllCall("comctl32\DefSubclassProc", "ptr", hwnd, "uint", msg, "ptr", wParam, "ptr", lParam, "ptr")
+}
+
 StatusText() {
+    if (currentView = "remove") {
+        ours := 0
+        for c in configs
+            ours += c.Ours
+        n := configs.Length
+        return n " configuration" (n = 1 ? "" : "s") " on this PC · " ours " made by FABconfig"
+    }
     if (DB_DIR = "")
         return "No database selected"
     SplitPath(DB_DIR, &folder)
@@ -581,10 +668,10 @@ PlaceCard(edge, fill, x, y, w, h, r := 10) {
     M(fill, x + 1, y + 1, w - 2, h - 2, r)
 }
 
-PlaceNav(grp, y) {
-    M(grp.Bg,    12, y,     204, 40, 8)
-    M(grp.Icon,  22, y + 4, 24,  32)
-    M(grp.Label, 54, y + 4, 156, 32)
+PlaceNav(grp, y, SB) {
+    M(grp.Bg,    12, y,     SB - 24, 40, 8)
+    M(grp.Icon,  22, y + 4, 24,      32)
+    M(grp.Label, 54, y + 4, SB - 72, 32)
 }
 
 PlaceButton(grp, x, y, w, h, r := 6) {
@@ -611,7 +698,7 @@ PlaceField(f, x, y, w, h := 34) {
 
 Layout(w, h) {
     W := w / SCALE, H := h / SCALE      ; work in 100%-scale units
-    SB  := 228                          ; sidebar width
+    SB  := 248                          ; sidebar width
     SBH := H - 30                       ; height above the status bar
 
     ; ---- Sidebar ----
@@ -619,19 +706,20 @@ Layout(w, h) {
     M(ctl.SideLine, SB, 0, 1,  SBH)
     M(ctl.Tile,     16, 16, 34, 34, ctl.Tile.Type = "Pic" ? 0 : 8)
     M(ctl.AppName,  60, 16, SB - 72, 34)
-    PlaceNav(navMain,  64)
-    PlaceNav(navAbout, 110)
-    M(ctl.Div1,    12, 162, SB - 24, 1)
-    M(ctl.VerHead, 16, 176, SB - 32, 16)
-    M(ctl.VerSub,  16, 194, SB - 32, 18)
+    PlaceNav(navMain,   64,  SB)
+    PlaceNav(navRemove, 110, SB)
+    PlaceNav(navAbout,  156, SB)
+    M(ctl.Div1,    12, 208, SB - 24, 1)
+    M(ctl.VerHead, 16, 222, SB - 32, 16)
+    M(ctl.VerSub,  16, 240, SB - 32, 18)
     perRow := 3, gap := 6
     chipW := (SB - 32 - (perRow - 1) * gap) / perRow
     for i, chip in chips {
         r := (i - 1) // perRow, c := Mod(i - 1, perRow)
-        M(chip, 16 + c * (chipW + gap), 220 + r * 32, chipW, 26, 26)
+        M(chip, 16 + c * (chipW + gap), 266 + r * 32, chipW, 26, 26)
     }
     M(ctl.Div2, 12, SBH - 60, SB - 24, 1)
-    PlaceNav(navExit, SBH - 52)
+    PlaceNav(navExit, SBH - 52, SB)
 
     ; ---- Top bar ----
     mx := SB + 1, mw := W - mx
@@ -678,6 +766,27 @@ Layout(w, h) {
     PlaceButton(btnDb, ix + iw - bw, y + 22, bw, 34)
     PlaceButton(btnCreate, ix + iw - 230, cy + ch - 20 - 40, 230, 40, 8)
 
+    ; ---- Remove view ----
+    M(ctl.RBanner,     x0,      top, cw,      bh, 10)
+    M(ctl.RBannerIcon, x0 + 12, top, 26,      bh)
+    M(ctl.RBannerText, x0 + 46, top, cw - 60, bh)
+    PlaceCard(ctl.RCardEdge, ctl.RCard, x0, cy, cw, ch)
+    M(ctl.RCardTitle, ix, cy + 18, iw, 26)
+    M(ctl.RHint,      ix, cy + 46, iw, 18)
+    by  := cy + ch - 20 - 40             ; button row
+    lvY := cy + 74, lvH := by - 48 - lvY
+    PlaceCard(ctl.LvEdge, lv, ix, lvY, iw, lvH, 0)
+    M(ctl.Empty, ix + 1, lvY + lvH / 2 - 12, iw - 2, 24)
+    M(ctl.Recycle,    ix,      by - 36, 18,      24)
+    M(ctl.RecycleLbl, ix + 24, by - 36, iw - 24, 24)
+    PlaceButton(btnRemove,  ix + iw - 210,            by, 210, 40, 8)
+    PlaceButton(btnRefresh, ix + iw - 210 - 10 - 130, by, 130, 40, 8)
+    fixed := 190 + 140 + 120             ; Folder takes whatever width is left
+    lv.ModifyCol(1, S(190))
+    lv.ModifyCol(2, S(Max(140, iw - 2 - fixed - 24)))
+    lv.ModifyCol(3, S(140))
+    lv.ModifyCol(4, S(120))
+
     ; ---- About view ----
     M(ctl.AHead, x0, top,      cw, 30)
     M(ctl.ASub,  x0, top + 32, cw, 20)
@@ -704,16 +813,21 @@ ShowView(name) {
     SetHot(0)
     for c in mainCtrls
         c.Visible := (name = "main")
+    for c in removeCtrls
+        c.Visible := (name = "remove")
     for c in aboutCtrls
         c.Visible := (name = "about")
-    SetNavActive(navMain,  name = "main")
-    SetNavActive(navAbout, name = "about")
+    ctl.Empty.Visible := (name = "remove") && (configs.Length = 0)
+    SetNavActive(navMain,   name = "main")
+    SetNavActive(navRemove, name = "remove")
+    SetNavActive(navAbout,  name = "about")
+    ctl.StatusL.Text := StatusText()
     if (name = "main")
         ctl.Name.Focus()
 }
 
 OnEscape(*) {
-    if (currentView = "about")
+    if (currentView != "main")
         ShowView("main")
     else
         ExitApp()
@@ -850,6 +964,156 @@ BrowseLocation(*) {
         return
     locTouched := true
     ctl.Loc.Value := sel
+}
+
+;======================= Remove configurations =====================
+; (This part was FABclean.) Lists the configurations under
+; HKCU\Software\Autodesk\Fabrication <year>\Configuration, one row per name and
+; folder. Only folders registered as configurations are ever touched: VBS
+; databases' own map.ini files start with the same marker line, so the marker
+; alone doesn't tell a configuration from a database.
+FindConfigs() {
+    found := Map()
+    try {
+        Loop Reg, "HKCU\Software\Autodesk", "K" {
+            if !RegExMatch(A_LoopRegName, "^Fabrication (\d{4})$", &m)
+                continue
+            year := m[1]
+            cfgRoot := "HKCU\Software\Autodesk\" A_LoopRegName "\Configuration"
+            Loop Reg, cfgRoot, "K" {
+                name := A_LoopRegName
+                path := ""
+                try path := RTrim(RegRead(cfgRoot "\" name, "Path"), "\")
+                id := StrLower(name "|" path)
+                if !found.Has(id)
+                    found[id] := {Name: name, Path: path, Years: [], Keys: [], Ours: path != "" && HasMarker(path)}
+                found[id].Years.Push(year)
+                found[id].Keys.Push(cfgRoot "\" name)
+            }
+        }
+    }
+    return found
+}
+
+; Nothing is ticked for the user: every row starts unticked.
+RefreshConfigs() {
+    global configs := []
+    lv.Delete()
+    for id, c in FindConfigs() {
+        configs.Push(c)
+        lv.Add("", c.Name, c.Path != "" ? c.Path : "(no folder)", YearsText(c.Years)
+            , c.Ours ? "FABconfig" : "Set up by hand")
+    }
+    ctl.Empty.Visible := (configs.Length = 0) && (currentView = "remove")
+    ctl.StatusL.Text := StatusText()
+}
+
+; The years in order, with runs shortened: "2019, 2022–2028". The registry
+; lists them in no particular order.
+YearsText(y) {
+    nums := StrSplit(Sort(JoinList(y, "`n"), "N U"), "`n")
+    out := [], i := 1
+    while (i <= nums.Length) {
+        j := i
+        while (j < nums.Length && nums[j + 1] = nums[j] + 1)
+            j++
+        out.Push(j > i ? nums[i] "–" nums[j] : nums[i])
+        i := j + 1
+    }
+    return JoinList(out)
+}
+
+RemoveChecked(*) {
+    picked := []
+    keepPaths := Map()          ; folders still used by configurations being kept
+    for i, c in configs {
+        if (lv.GetNext(i - 1, "Checked") = i)
+            picked.Push(c)
+        else if (c.Path != "")
+            keepPaths[StrLower(c.Path)] := true
+    }
+    if !picked.Length {
+        MsgBox("Tick the configurations you want to remove.", APP_NAME, "Iconi")
+        return
+    }
+
+    recycle := ctl.Recycle.Value
+    msg := "Remove " (picked.Length = 1 ? "this configuration" : "these " picked.Length " configurations") "?`n"
+    notOurs := 0
+    for c in picked {
+        msg .= "`n•  " c.Name "   (Fabrication " YearsText(c.Years) ")"
+        if recycle && FolderCanGo(c, keepPaths) {
+            msg .= "`n     Folder to Recycle Bin: " c.Path
+            extra := ExtraItems(c.Path)
+            if extra
+                msg .= "`n     It also holds " extra " other item" (extra = 1 ? "" : "s") " (projects, backups, etc.)"
+        }
+        if !c.Ours
+            notOurs++
+    }
+    if notOurs
+        msg .= "`n`n" notOurs " of these " (notOurs = 1 ? "was" : "were") " set up by hand, not by FABconfig."
+    if MsgBox(msg, APP_NAME, "YesNo Icon! Default2") != "Yes"
+        return
+
+    problems := ""
+    done := 0
+    for c in picked {
+        ok := true
+        for key in c.Keys {
+            try RegDeleteKey(key)
+            catch {
+                ok := false
+                problems .= "`n•  " c.Name ": couldn't remove " key
+            }
+        }
+        if recycle && c.Path != "" && DirExist(c.Path) {
+            if !FolderCanGo(c, keepPaths) {
+                problems .= "`n•  " c.Name ": folder kept, because another configuration uses it or it isn't a safe folder to remove"
+            } else {
+                try FileRecycle(c.Path)
+                catch {
+                    ok := false
+                    problems .= "`n•  " c.Name ": couldn't move " c.Path " to the Recycle Bin (is a file in it open?)"
+                }
+            }
+        }
+        done += ok
+    }
+    try DirDelete(CONFIG_ROOT)   ; tidy up the default folder, only if it's now empty
+
+    RefreshConfigs()
+    if (problems = "")
+        MsgBox("Removed " done " configuration" (done = 1 ? "." : "s."), APP_NAME, "Iconi")
+    else
+        MsgBox("Removed " done " of " picked.Length ".`n`nSome things need attention:" problems, APP_NAME, "Icon!")
+}
+
+; Only recycle a real configuration folder: not a drive or share root, not
+; this program's folder or the database, and not a folder another
+; configuration still uses.
+FolderCanGo(c, keepPaths) {
+    p := c.Path
+    if (p = "" || !DirExist(p))
+        return false
+    if RegExMatch(p, "^[A-Za-z]:$") || RegExMatch(p, "^\\\\[^\\]+\\[^\\]+$")
+        return false
+    if InStr(A_ScriptDir "\", p "\") = 1
+        return false
+    if (DB_DIR != "" && InStr(DB_DIR "\", p "\") = 1)
+        return false
+    if IsDatabaseFolder(p)
+        return false
+    return !keepPaths.Has(StrLower(p))
+}
+
+ExtraItems(path) {
+    n := 0
+    Loop Files path "\*", "FD" {
+        if !(A_LoopFileName = "map.ini" || A_LoopFileName = "config.png")
+            n++
+    }
+    return n
 }
 
 ;======================= Save =======================================
