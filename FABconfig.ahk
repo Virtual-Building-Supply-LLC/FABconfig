@@ -163,7 +163,7 @@ else if !A_IsCompiled
 ; +0x2000000 (WS_CLIPCHILDREN) stops the window background from painting
 ; over the controls, which reduces flicker when resizing.
 g := Gui("+Resize -DPIScale +0x2000000", WIN_TITLE)
-g.BackColor := C("bg")
+g.BackColor := Clr("bg")
 g.OnEvent("Close",  (*) => ExitApp())
 g.OnEvent("Escape", OnEscape)
 g.OnEvent("Size",   OnResize)
@@ -180,7 +180,7 @@ ctl.Status     := AddCtl("Text", "", "", "panel")
 ctl.StatusLine := AddCtl("Text", "", "", "border")
 
 ; ---- Sidebar ----
-tileBmp := LoadPng("FABCONFIG_ICON", APP_PNG, S(34), C("panel"))
+tileBmp := LoadPng("FABCONFIG_ICON", APP_PNG, S(34), Clr("panel"))
 if tileBmp {
     ctl.Tile := AddCtl("Picture", "w" S(34) " h" S(34), "HBITMAP:" tileBmp)
 } else {
@@ -311,7 +311,7 @@ return
 SetF(opts, face := FONT) => g.SetFont("norm " opts, face)
 
 ; The color for a role name in the current theme.
-C(role) => THEMES[theme].%role%
+Clr(role) => THEMES[theme].%role%
 
 ; Every control goes through AddCtl so we know the order it was created in.
 ; +0x4000000 (WS_CLIPSIBLINGS) stops a control from painting over the
@@ -319,9 +319,9 @@ C(role) => THEMES[theme].%role%
 ; bg and fg are color roles; they are re-applied when the theme changes.
 AddCtl(type, opts := "", text := "", bg := "", fg := "") {
     if (bg != "")
-        opts := "Background" C(bg) " " opts
+        opts := "Background" Clr(bg) " " opts
     if (fg != "")
-        g.SetFont("c" C(fg))
+        g.SetFont("c" Clr(fg))
     c := g.Add(type, opts " +0x4000000", text)
     created.Push(c)
     if (bg != "" || fg != "")
@@ -356,7 +356,7 @@ AddPart(grp, ctrl) {
 
 Paint(grp, role) {
     for c in grp.Parts
-        c.Opt("+Background" C(role))
+        c.Opt("+Background" Clr(role))
     for c in grp.Parts
         RedrawCtl(c)
 }
@@ -380,7 +380,7 @@ MakeNav(glyph, label, onClick) {
 SetNavActive(grp, on) {
     grp.Normal := on ? "accent" : "panel"
     grp.Hover := on ? "accent" : "navHover"
-    fg := C(on ? "onAccent" : "text")
+    fg := Clr(on ? "onAccent" : "text")
     grp.Icon.SetFont("c" fg)
     grp.Label.SetFont("c" fg)
     Paint(grp, grp.Normal)
@@ -445,7 +445,7 @@ MakeField(value, isStatic := false) {
 
 FieldFocus(f, on) {
     f.Focused := on
-    f.Border.Opt("+Background" C(on ? "accent" : "edge"))
+    f.Border.Opt("+Background" Clr(on ? "accent" : "edge"))
     RedrawCtl(f.Border)
     RedrawCtl(f.Fill)
     RedrawCtl(f.Edit)
@@ -515,20 +515,20 @@ ToggleTheme(*) {
 
 ; Re-applies every control's color roles in the current theme.
 ApplyTheme() {
-    g.BackColor := C("bg")
+    g.BackColor := Clr("bg")
     for r in themed {
         if (r.Bg != "")
-            r.C.Opt("+Background" C(r.Bg))
+            r.C.Opt("+Background" Clr(r.Bg))
         if (r.Fg != "")
-            r.C.SetFont("c" C(r.Fg))
+            r.C.SetFont("c" Clr(r.Fg))
     }
     for f in fields
         if f.Focused
-            f.Border.Opt("+Background" C("accent"))
+            f.Border.Opt("+Background" Clr("accent"))
     btnTheme.Icon.Text := ThemeGlyph()
     if (ctl.Tile.Type = "Pic") {
         ; The icon's rounded corners are drawn over the sidebar color.
-        if (bmp := LoadPng("FABCONFIG_ICON", APP_PNG, S(34), C("panel")))
+        if (bmp := LoadPng("FABCONFIG_ICON", APP_PNG, S(34), Clr("panel")))
             ctl.Tile.Value := "HBITMAP:" bmp
     }
     SetTitleBarTheme()

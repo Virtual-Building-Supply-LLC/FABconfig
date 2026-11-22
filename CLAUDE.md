@@ -30,6 +30,7 @@ Owner and developer: Scott Hendricks, Virtual Building Supply, LLC (VBS). Licens
 
 ## AutoHotkey v2 lessons learned (these caused real bugs)
 
+- **Names are case-insensitive:** a function `C()` and a local variable `c` are the same name, so the local hid the function ("local variable has not been assigned a value" at start-up). The color function is `Clr()`; don't give functions one-letter names that clash with loop variables.
 - **Never name an object property `Base`** — it's the built-in prototype property ("Invalid base" error). Group colors use `Normal`/`Hover`.
 - **Z-order:** Windows stacks each new control *underneath* earlier ones. Every control must be created through `AddCtl()` (records creation order and adds `WS_CLIPSIBLINGS` 0x4000000), and `StackControls()` re-stacks them before `Show` so later controls sit on top of the cards behind them. Do not call `g.Add` directly.
 - **Do not use `WS_EX_COMPOSITED` (+E0x02000000)** on the Gui: it painted the backgrounds over everything and broke rounded corners. The Gui uses `WS_CLIPCHILDREN` (+0x2000000) instead.
