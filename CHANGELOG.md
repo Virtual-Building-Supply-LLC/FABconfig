@@ -4,6 +4,13 @@ What changed in each version of FABconfig. Versions are dates (`vYY.MM.DD`); see
 
 ## Unreleased
 
+### Added
+- **Help → How to use FABconfig**: a page with short steps for adding and removing configurations, and a button to the online instructions.
+- **Help → Online instructions** opens the "How to use it" section of the README on GitHub in your web browser.
+
+### Changed
+- "What's this?" is no longer in the sidebar; it's under **Help** (and the "How it works…" button).
+
 ## v26.11.21.1
 
 ### Added

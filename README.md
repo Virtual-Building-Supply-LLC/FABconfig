@@ -2,7 +2,7 @@
 
 FABconfig adds an Autodesk Fabrication database to Fabrication (Revit, CADmep, ESTmep, CAMduct) as a named configuration, so the database appears in Fabrication's configuration list at start-up. It can also remove configurations you no longer need. It creates the configuration folder, writes a `map.ini` that points back to the shared database, and registers the configuration with each recent Fabrication version, all in one click.
 
-![FABconfig's Add Configuration page in the dark theme, with the configuration name, location and database folder; the sidebar has Add Configuration, Remove Configurations and What's this?, and the Fabrication versions it registers with](docs/screenshot.png)
+![FABconfig's Add Configuration page in the dark theme, with the configuration name, location and database folder; the sidebar has Add Configuration and Remove Configurations, and the Fabrication versions it registers with](docs/screenshot.png)
 
 FABconfig is written in [AutoHotkey v2](https://www.autohotkey.com/) and can be run as a script or compiled into a standalone `.exe`. It is developed by Virtual Building Supply, LLC and released under the GNU General Public License v3.
 
@@ -27,7 +27,7 @@ No administrator rights are needed. FABconfig writes only to the current user's 
 4. Check the name, location and database folder, then click **Create Configuration** (or press Enter). Use the **Browse** button beside the database folder to pick a different database.
 5. Start Fabrication. The new configuration appears in the configuration list.
 
-The **What's this?** page in the sidebar (also under **Help**) explains each step inside the program. Esc returns from that page, or closes the program from the main page. The button at the top right switches between the dark and light themes.
+**Help → How to use FABconfig** shows short steps for adding and removing configurations, and **Help → Online instructions** opens this section in your web browser. **Help → What's this?** explains what FABconfig changes. Esc returns from those pages to Add Configuration, or closes the program from the main page. The button at the top right switches between the dark and light themes.
 
 ## What it changes
 

@@ -131,6 +131,31 @@ Nothing in the database folder itself is changed. Running it again with the same
 
 Remove Configurations lists every configuration registered on this PC and removes the ones you tick: their registry entries for every Fabrication version and, if you choose, their folders (to the Recycle Bin, so they can be restored).
 )"
+README_URL := "https://github.com/Virtual-Building-Supply-LLC/FABconfig#how-to-use-it"
+HELP_ADD := "
+(
+1.  Check the name. It's filled in from the database when it can be.
+
+2.  Check the location. It follows the name; use Browse… to pick another folder.
+
+3.  Check the database folder. Use Browse… to pick a different database.
+
+4.  Click Create Configuration (or press Enter).
+
+5.  Start Fabrication and pick the new configuration from the list.
+)"
+HELP_REMOVE := "
+(
+1.  Open Remove Configurations in the sidebar.
+
+2.  Tick the configurations you no longer need. Nothing is ticked for you.
+
+3.  Leave "Also move each folder to the Recycle Bin" on to remove their folders too.
+
+4.  Click Remove selected and check the list before you confirm.
+
+5.  Changed your mind? Restore the folder from the Recycle Bin and run Add Configuration again.
+)"
 COPYRIGHT_TEXT := "Copyright © 2026 Virtual Building Supply, LLC. FABconfig is free software under the GNU General Public License v3 and comes with ABSOLUTELY NO WARRANTY. See the LICENSE file for details."
 
 STEPS := [
@@ -150,6 +175,7 @@ locTouched  := false   ; true once the user edits or browses the location
 settingLoc  := false
 mainCtrls   := []
 removeCtrls := []
+helpCtrls   := []
 aboutCtrls  := []
 configs     := []      ; Remove view: one entry per list row
 ctl    := {}
@@ -198,7 +224,6 @@ ctl.AppName := AddCtl("Text", "+0x200", APP_NAME, "panel", "text")
 
 navMain   := MakeNav(0xE710, "Add Configuration",     (*) => ShowView("main"))
 navRemove := MakeNav(0xE74D, "Remove Configurations", (*) => ShowView("remove"))
-navAbout  := MakeNav(0xE897, "What's this?",          (*) => ShowView("about"))
 
 ctl.Div1 := AddCtl("Text", "", "", "border")
 SetF("s8")
@@ -220,6 +245,9 @@ fileMenu.Add("Remove Configurations", (*) => ShowView("remove"))
 fileMenu.Add()
 fileMenu.Add("Exit", (*) => ExitApp())
 helpMenu := Menu()
+helpMenu.Add("How to use FABconfig", (*) => ShowView("help"))
+helpMenu.Add("Online instructions`t↗", (*) => OpenInstructions())
+helpMenu.Add()
 helpMenu.Add("What's this?", (*) => ShowView("about"))
 menuFile := MakeMenu("File", fileMenu)
 menuHelp := MakeMenu("Help", helpMenu)
@@ -298,6 +326,29 @@ btnRemove  := MakeButton(0xE74D, "Remove selected", "danger", "dangerHover", "on
 ; (NM_CUSTOMDRAW); the list is subclassed to give them the text color.
 lvHdr := SendMessage(0x101F, 0, 0, lv)   ; LVM_GETHEADER
 DllCall("comctl32\SetWindowSubclass", "ptr", lv.Hwnd, "ptr", CallbackCreate(LvSubclass, , 6), "uptr", 1, "uptr", 0)
+
+; ---- Help view (How to use FABconfig) ----
+SetF("s13", FONT_SEMI)
+ctl.HHead := AddCtl("Text", "", "How to use FABconfig", "bg", "text")
+SetF("s10")
+ctl.HSub := AddCtl("Text", "", "Close Fabrication first. Changes show the next time Fabrication starts.", "bg", "muted")
+helpCtrls.Push(ctl.HHead, ctl.HSub)
+helpCards := []
+for card in [{Title: "Add a configuration", Body: HELP_ADD}, {Title: "Remove configurations", Body: HELP_REMOVE}] {
+    card.Edge := AddCtl("Text", "", "", "border")
+    card.Bg   := AddCtl("Text", "", "", "card")
+    SetF("s11", FONT_SEMI)
+    card.Head := AddCtl("Text", "", card.Title, "card", "text")
+    SetF("s10")
+    card.Text := AddCtl("Text", "", card.Body, "card", "text")
+    helpCtrls.Push(card.Edge, card.Bg, card.Head, card.Text)
+    helpCards.Push(card)
+}
+ctl.HStrip := AddCtl("Text", "", "", "soft")
+SetF("s10")
+ctl.HStripText := AddCtl("Text", "+0x200", "More detail and screenshots are in the online instructions.", "soft", "text")
+helpCtrls.Push(ctl.HStrip, ctl.HStripText)
+btnOnline := MakeButton(0xE8A7, "Open online instructions", "btn", "btnHover", "text", (*) => OpenInstructions(), true, helpCtrls)
 
 ; ---- About view ----
 SetF("s13", FONT_SEMI)
@@ -579,7 +630,6 @@ ApplyTheme() {
     Layout(w, h)
     SetNavActive(navMain,   currentView = "main")
     SetNavActive(navRemove, currentView = "remove")
-    SetNavActive(navAbout,  currentView = "about")
     DllCall("RedrawWindow", "ptr", g.Hwnd, "ptr", 0, "ptr", 0, "uint", 0x185)
 }
 
@@ -626,6 +676,13 @@ LvSubclass(hwnd, msg, wParam, lParam, id, ref) {
         }
     }
     return DllCall("comctl32\DefSubclassProc", "ptr", hwnd, "uint", msg, "ptr", wParam, "ptr", lParam, "ptr")
+}
+
+; The "How to use it" section of the README on GitHub, in the default browser.
+OpenInstructions() {
+    try Run(README_URL)
+    catch
+        MsgBox("Couldn't open your web browser. The instructions are at:`n" README_URL, APP_NAME, "Iconi")
 }
 
 StatusText() {
@@ -708,15 +765,14 @@ Layout(w, h) {
     M(ctl.AppName,  60, 16, SB - 72, 34)
     PlaceNav(navMain,   64,  SB)
     PlaceNav(navRemove, 110, SB)
-    PlaceNav(navAbout,  156, SB)
-    M(ctl.Div1,    12, 208, SB - 24, 1)
-    M(ctl.VerHead, 16, 222, SB - 32, 16)
-    M(ctl.VerSub,  16, 240, SB - 32, 18)
+    M(ctl.Div1,    12, 162, SB - 24, 1)
+    M(ctl.VerHead, 16, 176, SB - 32, 16)
+    M(ctl.VerSub,  16, 194, SB - 32, 18)
     perRow := 3, gap := 6
     chipW := (SB - 32 - (perRow - 1) * gap) / perRow
     for i, chip in chips {
         r := (i - 1) // perRow, c := Mod(i - 1, perRow)
-        M(chip, 16 + c * (chipW + gap), 266 + r * 32, chipW, 26, 26)
+        M(chip, 16 + c * (chipW + gap), 220 + r * 32, chipW, 26, 26)
     }
     M(ctl.Div2, 12, SBH - 60, SB - 24, 1)
     PlaceNav(navExit, SBH - 52, SB)
@@ -787,6 +843,23 @@ Layout(w, h) {
     lv.ModifyCol(3, S(140))
     lv.ModifyCol(4, S(120))
 
+    ; ---- Help view ----
+    M(ctl.HHead, x0, top,      cw, 30)
+    M(ctl.HSub,  x0, top + 32, cw, 20)
+    sh := 46, sy := SBH - 18 - sh
+    hy := top + 62, hh := sy - 12 - hy
+    hw2 := (cw - 12) / 2
+    for i, card in helpCards {
+        hx := x0 + (i - 1) * (hw2 + 12)
+        PlaceCard(card.Edge, card.Bg, hx, hy, hw2, hh)
+        M(card.Head, hx + 18, hy + 16, hw2 - 36, 24)
+        M(card.Text, hx + 18, hy + 48, hw2 - 36, hh - 60)
+    }
+    ow := 230
+    M(ctl.HStrip,     x0,      sy, cw,                sh, 10)
+    M(ctl.HStripText, x0 + 16, sy, cw - 16 - ow - 20, sh)
+    PlaceButton(btnOnline, x0 + cw - ow - 8, sy + 8, ow, 30)
+
     ; ---- About view ----
     M(ctl.AHead, x0, top,      cw, 30)
     M(ctl.ASub,  x0, top + 32, cw, 20)
@@ -815,12 +888,13 @@ ShowView(name) {
         c.Visible := (name = "main")
     for c in removeCtrls
         c.Visible := (name = "remove")
+    for c in helpCtrls
+        c.Visible := (name = "help")
     for c in aboutCtrls
         c.Visible := (name = "about")
     ctl.Empty.Visible := (name = "remove") && (configs.Length = 0)
     SetNavActive(navMain,   name = "main")
     SetNavActive(navRemove, name = "remove")
-    SetNavActive(navAbout,  name = "about")
     ctl.StatusL.Text := StatusText()
     if (name = "main")
         ctl.Name.Focus()
