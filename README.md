@@ -2,7 +2,7 @@
 
 FABconfig adds an Autodesk Fabrication database to Fabrication (Revit, CADmep, ESTmep, CAMduct) as a named configuration, so the database appears in Fabrication's configuration list at start-up. It can also remove configurations you no longer need. It creates the configuration folder, writes a `map.ini` that points back to the shared database, and registers the configuration with each recent Fabrication version, all in one click.
 
-![FABconfig's Add Configuration page in the dark theme, with the configuration name, location and database folder; the sidebar has Add Configuration and Remove Configurations, and the Fabrication versions it registers with](docs/screenshot.png)
+![FABconfig's Add Configuration page in the dark theme, with the configuration name, location, optional ESTmep or CAMduct project location and database folder; the sidebar has Add Configuration and Remove Configurations, and the Fabrication versions it registers with](docs/screenshot.png)
 
 FABconfig is written in [AutoHotkey v2](https://www.autohotkey.com/) and can be run as a script or compiled into a standalone `.exe`. It is developed by Virtual Building Supply, LLC and released under the GNU General Public License v3.
 
@@ -32,7 +32,7 @@ No administrator rights are needed. FABconfig writes only to the current user's 
 ## What it changes
 
 - **Configuration folder:** Created at `C:\fabrication-configurations\<name>` by default. The location follows the name as you type, until you edit it or choose a folder with **Browse**.
-- **map.ini:** Written to the configuration folder. It points the `Database`, `Items`, `Images`, `Profiles`, `Reports` and `Scripts` paths at the shared database. `Projects`, DXFs, `Blocks` and `Backup` stay in the configuration folder, so each user's local work stays separate from the shared database. Its first line, `# Created by Virtual Building Supply, LLC`, marks the configuration as made by FABconfig.
+- **map.ini:** Written to the configuration folder. It points the `Database`, `Items`, `Images`, `Profiles`, `Reports` and `Scripts` paths at the shared database. `Project` is the **ESTmep or CAMduct Project Location** you choose; left blank, it's a `projects` folder inside the configuration folder (`Project=./projects`). DXFs, `Blocks` and `Backup` stay in the configuration folder, so each user's local work stays separate from the shared database. Its first line, `# Created by Virtual Building Supply, LLC`, marks the configuration as made by FABconfig.
 - **config.png:** Copied from the database folder into the configuration folder, if present. Fabrication shows this picture in its configuration list.
 - **Registry:** For each Fabrication version from four years before the current year to two years after it (and any other version the configuration was already registered with), writes the configuration folder to the `Path` value under
   `HKEY_CURRENT_USER\Software\Autodesk\Fabrication <year>\Configuration\<name>`.
@@ -42,6 +42,7 @@ Nothing in the database folder itself is changed. Running FABconfig again with t
 ### Safety checks
 
 - The name can't contain characters Windows doesn't allow in folder names.
+- The project location, if you give one, must be a full path and can't be the database folder or inside it. FABconfig creates it if it doesn't exist.
 - The configuration folder must be a full path, and can't be the database folder, a folder that contains it, or a folder inside it. (A folder inside the database would also be deleted by tools that mirror the database, such as `robocopy /MIR`.)
 - A database folder must contain a `map.ini` or a `DATABASE` folder, and can't be a configuration folder (one whose `map.ini` points to a database somewhere else). If you pick one that doesn't qualify, FABconfig asks you to choose again.
 - If a configuration with the same name already exists, FABconfig shows which Fabrication versions it's registered with and where it points (and warns if it wasn't made by FABconfig), then asks before overwriting it. It checks every Fabrication version in the registry, not just the range above, and an overwrite updates all of them. If the name is new but the chosen folder already has a `map.ini`, it asks before overwriting that too. Whenever it overwrites a `map.ini`, the previous one is kept next to it as `map.ini.bak` (only the most recent one is kept).

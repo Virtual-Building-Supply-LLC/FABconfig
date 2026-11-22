@@ -4,6 +4,11 @@ What changed in each version of FABconfig. Versions are dates (`vYY.MM.DD`); see
 
 ## Unreleased
 
+## v26.11.22
+
+### Added
+- **ESTmep or CAMduct Project Location (optional)** in Configuration details, with Browse. It's written to the map.ini as `[PROGRAM PATHS] Project=`. Left blank, projects stay in a `projects` folder inside the configuration location (`Project=./projects`, as before). The folder is created if it doesn't exist; it must be a full path and can't be in the database folder.
+
 ## v26.11.21.2
 
 ### Added

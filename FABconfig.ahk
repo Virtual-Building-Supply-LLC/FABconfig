@@ -51,7 +51,7 @@ APP_NAME    := "FABconfig"
 ; "v") into the .exe's version details, so they must stay directly
 ; after this line. A second release on the same day adds a fourth number,
 ; like "v26.10.24.1".
-APP_VERSION := "v26.11.21.2"
+APP_VERSION := "v26.11.22"
 ;@Ahk2Exe-Let U_version = %A_PriorLine~^.*"v([\d.]+)".*$~$1%
 ;@Ahk2Exe-SetVersion %U_version%
 ;@Ahk2Exe-ExeName FABconfig.exe
@@ -138,11 +138,13 @@ HELP_ADD := "
 
 2.  Check the location. It follows the name; use Browse… to pick another folder.
 
-3.  Check the database folder. Use Browse… to pick a different database.
+3.  Optional: choose where ESTmep or CAMduct keep their projects. Left blank, they go in a projects folder inside the configuration location.
 
-4.  Click Create Configuration (or press Enter).
+4.  Check the database folder. Use Browse… to pick a different database.
 
-5.  Start Fabrication and pick the new configuration from the list.
+5.  Click Create Configuration (or press Enter).
+
+6.  Start Fabrication and pick the new configuration from the list.
 )"
 HELP_REMOVE := "
 (
@@ -281,6 +283,11 @@ mainCtrls.Push(ctl.LocLbl)
 fLoc := MakeField(CONFIG_ROOT "\" DB_NAME)   ; just the root if there's no DBNAME
 btnBrowse := MakeButton(0xE838, "Browse…", "btn", "btnHover", "text", BrowseLocation, true, mainCtrls)
 SetF("s9")
+ctl.ProjLbl := AddCtl("Text", "", "ESTmep or CAMduct Project Location (optional)", "card", "muted")
+mainCtrls.Push(ctl.ProjLbl)
+fProj := MakeField("")   ; blank = a "projects" folder inside the configuration location
+btnProj := MakeButton(0xE838, "Browse…", "btn", "btnHover", "text", BrowseProject, true, mainCtrls)
+SetF("s9")
 ctl.DbLbl := AddCtl("Text", "", "Fabrication database folder", "card", "muted")
 mainCtrls.Push(ctl.DbLbl)
 fDb := MakeField(DB_DIR != "" ? DB_DIR : NO_DB_TEXT, true)
@@ -289,6 +296,7 @@ btnCreate := MakeButton(0xE710, "Create Configuration", "accent", "accentHover",
 
 ctl.Name := fName.Edit
 ctl.Loc  := fLoc.Edit
+ctl.Proj := fProj.Edit
 ctl.Name.OnEvent("Change", OnNameChange)
 ctl.Loc.OnEvent("Change", OnLocChange)
 
@@ -804,7 +812,7 @@ Layout(w, h) {
     PlaceButton(btnHow, x0 + cw - hw - 8, top + 8, hw, 30)
 
     cy := top + bh + 16
-    ch := Max(346, SBH - 18 - cy)       ; fill the window height; 346 fits the fields and button
+    ch := Max(418, SBH - 18 - cy)       ; fill the window height; 418 fits the fields and button
     PlaceCard(ctl.CardEdge, ctl.Card, x0, cy, cw, ch)
     ix := x0 + 22, iw := cw - 44
     M(ctl.CardTitle, ix, cy + 18, iw, 26)
@@ -816,6 +824,10 @@ Layout(w, h) {
     M(ctl.LocLbl, ix, y, iw, 18)
     PlaceField(fLoc, ix, y + 22, iw - bw - 8)
     PlaceButton(btnBrowse, ix + iw - bw, y + 22, bw, 34)
+    y += 72
+    M(ctl.ProjLbl, ix, y, iw, 18)
+    PlaceField(fProj, ix, y + 22, iw - bw - 8)
+    PlaceButton(btnProj, ix + iw - bw, y + 22, bw, 34)
     y += 72
     M(ctl.DbLbl, ix, y, iw, 18)
     PlaceField(fDb, ix, y + 22, iw - bw - 8)
@@ -1030,6 +1042,13 @@ OnLocChange(*) {
         locTouched := true
 }
 
+BrowseProject(*) {
+    start := ctl.Proj.Value != "" ? "*" ctl.Proj.Value : ""
+    sel := DirSelect(start, 3, "Select the folder for ESTmep or CAMduct projects.")
+    if (sel != "")
+        ctl.Proj.Value := RTrim(sel, "\")
+}
+
 BrowseLocation(*) {
     global locTouched
     start := ctl.Loc.Value != "" ? "*" ctl.Loc.Value : ""
@@ -1194,6 +1213,7 @@ ExtraItems(path) {
 SaveConfig(*) {
     name := Trim(ctl.Name.Value)
     dir  := RTrim(Trim(ctl.Loc.Value), "\")
+    proj := RTrim(Trim(ctl.Proj.Value), "\")
 
     ; ---- Validate ----
     if (DB_DIR = "") {
@@ -1214,6 +1234,12 @@ SaveConfig(*) {
         return Fail(ctl.Loc, "The configuration location can't be the database folder or a folder that contains it.")
     if InStr(dir "\", DB_DIR "\") = 1
         return Fail(ctl.Loc, "The configuration location can't be inside the database folder. Choose a folder outside it, like`n" CONFIG_ROOT "\" name)
+    if (proj != "") {
+        if !RegExMatch(proj, "^([A-Za-z]:|\\\\)")
+            return Fail(ctl.Proj, "The project location must be a full path, like`nC:\Fabrication Projects`n`nLeave it blank to keep projects in the configuration location.")
+        if (proj = DB_DIR) || InStr(proj "\", DB_DIR "\") = 1
+            return Fail(ctl.Proj, "The project location can't be the database folder or inside it. (Tools that mirror the database, such as robocopy /MIR, would delete it.)")
+    }
 
     ; ---- Confirm before overwriting an existing configuration ----
     years := FabYears()
@@ -1251,7 +1277,9 @@ SaveConfig(*) {
         ; Keep the previous map.ini (one level of backup).
         if FileExist(dir "\map.ini")
             FileMove(dir "\map.ini", dir "\map.ini.bak", 1)
-        FileAppend(MapIniText(), dir "\map.ini", "CP0 `n")
+        FileAppend(MapIniText(proj), dir "\map.ini", "CP0 `n")
+        if (proj != "")
+            DirCreate(proj)   ; so ESTmep and CAMduct find it
     } catch as err {
         MsgBox("Couldn't write the configuration files in`n" dir "`n`n" err.Message, APP_NAME, "Icon!")
         return
@@ -1323,7 +1351,9 @@ Fail(edt, message) {
 
 RegKey(year, name) => "HKCU\Software\Autodesk\Fabrication " year "\Configuration\" name
 
-MapIniText() {
+; proj: the project folder the user chose, or "" for ./projects (a
+; "projects" folder inside the configuration folder).
+MapIniText(proj := "") {
     text := "
     (
 # Created by Virtual Building Supply, LLC
@@ -1339,11 +1369,11 @@ Images={1}/images
 Items={1}/items
 Main={1}
 Profiles={1}/profiles
-Project=./projects
+Project={2}
 Reports={1}/reports
 Scripts={1}/scripts
 Textures=.
 
     )"
-    return Format(text, DB_PATH)
+    return Format(text, DB_PATH, proj != "" ? StrReplace(proj, "\", "/") : "./projects")
 }
