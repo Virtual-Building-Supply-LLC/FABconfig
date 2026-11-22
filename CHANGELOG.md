@@ -4,6 +4,8 @@ What changed in each version of FABconfig. Versions are dates (`vYY.MM.DD`); see
 
 ## Unreleased
 
+## v26.11.21
+
 ### Added
 - Light and dark themes, switched with the button at the top right. FABconfig remembers the choice for each user (in `HKEY_CURRENT_USER\Software\Virtual Building Supply\FABconfig`).
 - Before overwriting a configuration that already exists, FABconfig shows which Fabrication versions it's registered with and where it points, and warns if it wasn't made by FABconfig.

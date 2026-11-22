@@ -51,7 +51,7 @@ APP_NAME    := "FABconfig"
 ; "v") into the .exe's version details and name, so they must stay directly
 ; after this line. A second release on the same day adds a fourth number,
 ; like "v26.10.24.1".
-APP_VERSION := "v26.10.24"
+APP_VERSION := "v26.11.21"
 ;@Ahk2Exe-Let U_version = %A_PriorLine~^.*"v([\d.]+)".*$~$1%
 ;@Ahk2Exe-SetVersion %U_version%
 ;@Ahk2Exe-ExeName FABconfig_v%U_version%.exe
