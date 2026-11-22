@@ -15,7 +15,7 @@ Owner and developer: Scott Hendricks, Virtual Building Supply, LLC (VBS). Licens
 
 - Requires AutoHotkey v2 on Windows 10/11. Run: `AutoHotkey64.exe FABconfig.ahk`.
 - Load/syntax errors: `AutoHotkey64.exe /ErrorStdOut FABconfig.ahk` prints errors to stdout instead of a dialog.
-- Compile: Ahk2Exe with a v2 base; metadata comes from the `;@Ahk2Exe-` lines (escape commas as `` `, ``). The output is `FABconfig_v<version>.exe` next to the script.
+- Compile: Ahk2Exe with a v2 base; metadata comes from the `;@Ahk2Exe-` lines (escape commas as `` `, ``). The output is `FABconfig.exe` next to the script (no version in the name; the version is in its file properties).
 - There are no automated tests. Test FABconfig with a throwaway configuration name and clean up afterwards (delete the registry keys and the folder).
 
 ## Code conventions

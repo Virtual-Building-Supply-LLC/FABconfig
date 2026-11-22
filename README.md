@@ -57,7 +57,7 @@ To remove a configuration by hand, delete its `Configuration\<name>` key under e
 2. Right-click the script and choose **Compile Script**. If that option isn't there, open **AutoHotkey Dash** and choose **Compile**, which installs the compiler (Ahk2Exe) the first time.
 3. Choose a **v2** base file (for example `AutoHotkey64.exe`) and click **Convert**.
 
-The compiled file is named after the version, for example `FABconfig_v26.10.24.exe`, and is saved next to the script. The icon, version and copyright details come from the `;@Ahk2Exe-` lines in the script; the version is copied from `APP_VERSION`, so there's nothing else to update. These lines need a recent version of Ahk2Exe. The pictures are inside the `.exe`, so it runs on its own without the `Resources` folder. The script (`.ahk`) reads them from the `Resources` folder instead, and shows plain icons if it's missing.
+The compiled file is `FABconfig.exe`, saved next to the script. Its version is in the file's properties, not its name. The icon, version and copyright details come from the `;@Ahk2Exe-` lines in the script; the version is copied from `APP_VERSION`, so there's nothing else to update. These lines need a recent version of Ahk2Exe. The pictures are inside the `.exe`, so it runs on its own without the `Resources` folder. The script (`.ahk`) reads them from the `Resources` folder instead, and shows plain icons if it's missing.
 
 Some antivirus tools are wary of unsigned `.exe` files compiled from AutoHotkey. Signing the `.exe` with a code-signing certificate avoids this.
 

@@ -4,6 +4,9 @@ What changed in each version of FABconfig. Versions are dates (`vYY.MM.DD`); see
 
 ## Unreleased
 
+### Changed
+- The compiled file is always named `FABconfig.exe`, without the version.
+
 ## v26.11.21
 
 ### Added
