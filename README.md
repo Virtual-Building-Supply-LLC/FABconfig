@@ -12,7 +12,7 @@ FABconfig is written in [AutoHotkey v2](https://www.autohotkey.com/) and can be 
 - [AutoHotkey v2.0](https://www.autohotkey.com/) or later, to run or compile the script. Users of a compiled `.exe` don't need AutoHotkey.
 - Autodesk Fabrication, for the configuration to be of any use.
 
-No administrator rights are needed. FABconfig writes only to the current user's registry (`HKEY_CURRENT_USER`) and to the configuration folder you choose.
+No administrator rights are needed. FABconfig writes only to the current user's registry (`HKEY_CURRENT_USER`) and to the configuration folder you choose. Besides the configuration itself, it remembers your light/dark theme choice under `HKEY_CURRENT_USER\Software\Virtual Building Supply\FABconfig`.
 
 ## How to use it
 
@@ -27,7 +27,7 @@ No administrator rights are needed. FABconfig writes only to the current user's 
 4. Check the name, location and database folder, then click **Create Configuration** (or press Enter). Use the **Browse** button beside the database folder to pick a different database.
 5. Start Fabrication. The new configuration appears in the configuration list.
 
-The **What's this?** page in the sidebar explains each step inside the program. Esc returns from that page, or closes the program from the main page.
+The **What's this?** page in the sidebar (also under **Help**) explains each step inside the program. Esc returns from that page, or closes the program from the main page. The button at the top right switches between the dark and light themes.
 
 ## What it changes
 
@@ -53,11 +53,11 @@ To remove a configuration by hand, delete its `Configuration\<name>` key under e
 
 ## Building the .exe
 
-1. Make sure the `Resources` folder sits next to the script. The compiler builds `Resources\VBS_Logo.ico` (the `.exe` icon) and `Resources\VBS_Logo_Badge.png` (the sidebar logo) into the `.exe`.
+1. Make sure the `Resources` folder sits next to the script. The compiler builds `Resources\FABconfig.ico` (the `.exe` icon), `Resources\FABconfig.png` (the sidebar icon) and `Resources\VBS_Logo_Badge.png` (the logo on the What's this? page) into the `.exe`.
 2. Right-click the script and choose **Compile Script**. If that option isn't there, open **AutoHotkey Dash** and choose **Compile**, which installs the compiler (Ahk2Exe) the first time.
 3. Choose a **v2** base file (for example `AutoHotkey64.exe`) and click **Convert**.
 
-The compiled file is named after the version, for example `FABconfig_v26.10.24.exe`, and is saved next to the script. The icon, version and copyright details come from the `;@Ahk2Exe-` lines in the script; the version is copied from `APP_VERSION`, so there's nothing else to update. These lines need a recent version of Ahk2Exe. Both logos are inside the `.exe`, so it runs on its own without the `Resources` folder. The script (`.ahk`) reads them from the `Resources` folder instead, and shows plain icons if it's missing.
+The compiled file is named after the version, for example `FABconfig_v26.10.24.exe`, and is saved next to the script. The icon, version and copyright details come from the `;@Ahk2Exe-` lines in the script; the version is copied from `APP_VERSION`, so there's nothing else to update. These lines need a recent version of Ahk2Exe. The pictures are inside the `.exe`, so it runs on its own without the `Resources` folder. The script (`.ahk`) reads them from the `Resources` folder instead, and shows plain icons if it's missing.
 
 Some antivirus tools are wary of unsigned `.exe` files compiled from AutoHotkey. Signing the `.exe` with a code-signing certificate avoids this.
 
@@ -76,9 +76,10 @@ The script keeps the same file name from version to version; past versions are i
 
 ```
 FABconfig.ahk             The program
-Resources/                VBS logo files (not covered by the GPL, see below)
-  VBS_Logo.ico            Window, taskbar and .exe icon
-  VBS_Logo_Badge.png      Logo shown in the sidebar
+Resources/                Icon and logo files (not covered by the GPL, see below)
+  FABconfig.ico           Window, taskbar and .exe icon
+  FABconfig.png           The same icon, shown in the sidebar
+  VBS_Logo_Badge.png      VBS logo shown on the What's this? page
 docs/
   screenshot.png          Screenshot of the main window, shown above
 CHANGELOG.md              What changed in each version

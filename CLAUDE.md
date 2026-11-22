@@ -1,6 +1,6 @@
 # FABconfig
 
-FABconfig is a Windows GUI tool, written in AutoHotkey v2, that registers an Autodesk Fabrication database as a named Fabrication configuration. It creates a configuration folder, writes a `map.ini` pointing back to the shared database, copies `config.png`, and writes `HKCU\Software\Autodesk\Fabrication <year>\Configuration\<name>` → `Path` for years A_YYYY-4 to A_YYYY+2. See README.md for user-facing behavior.
+FABconfig is a Windows GUI tool, written in AutoHotkey v2, that registers an Autodesk Fabrication database as a named Fabrication configuration. It creates a configuration folder, writes a `map.ini` pointing back to the shared database, copies `config.png`, and writes `HKCU\Software\Autodesk\Fabrication <year>\Configuration\<name>` → `Path` for years A_YYYY-4 to A_YYYY+2. It also remembers the light/dark theme choice in its own HKCU key. See README.md for user-facing behavior.
 
 Owner and developer: Scott Hendricks, Virtual Building Supply, LLC (VBS). License: GPL-3.0-or-later with section 7 additional terms (keep author attribution; no rights to VBS name/logo).
 
@@ -8,7 +8,7 @@ Owner and developer: Scott Hendricks, Virtual Building Supply, LLC (VBS). Licens
 
 - `FABconfig.ahk` — the whole program (single file). The file name never changes between versions.
 - `CHANGELOG.md` — notes per version; new changes go under **Unreleased**.
-- `Resources/VBS_Logo.ico` — window/tray/.exe icon. `Resources/VBS_Logo_Badge.png` — sidebar logo (logo on white, rounded via a window region). Both optional at runtime; the script falls back to a shell32 icon / MDL2 glyph. The compiled .exe has both built in (`SetMainIcon`, and `AddResource` as RCDATA `VBS_LOGO_BADGE`, loaded by `LoadPngResource()` through GDI+), so it doesn't need the folder. Don't paste the logos into the .ahk itself: GPL section 7(e) keeps them separate from the GPL'd source.
+- `Resources/FABconfig.ico` — window/tray/.exe icon (blue rounded square with a white folder + plus, in the MapQuery Studio icon style; PNG entries 16–256 px). `Resources/FABconfig.png` — the same icon at 256 px for the sidebar tile. `Resources/VBS_Logo_Badge.png` — VBS logo on white, shown beside the copyright line on the What's this? page. All optional at runtime; the script falls back to a shell32 icon / MDL2 glyph. The compiled .exe has them built in (`SetMainIcon`, and `AddResource` as RCDATA `FABCONFIG_ICON` and `VBS_LOGO_BADGE`, loaded by `LoadPng()` through GDI+), so it doesn't need the folder. Don't paste the logos into the .ahk itself: GPL section 7(e) keeps them separate from the GPL'd source.
 - `README.md`, `LICENSE` (verbatim GPL v3, do not edit).
 
 ## Running and checking
@@ -23,7 +23,8 @@ Owner and developer: Scott Hendricks, Virtual Building Supply, LLC (VBS). Licens
 - Keep the GPL header block at the top of the file intact, including copyright, author and the section 7 terms.
 - Version format is `vYY.MM.DD` (for example `v26.10.24`); a second release the same day is `vYY.MM.DD.N`. `APP_VERSION` is the only place it's written: the `;@Ahk2Exe-Let`/`SetVersion`/`ExeName` lines directly after it read it through `A_PriorLine`, so nothing may be inserted between them. Don't put the version in file names, the header comment or the README. Releases are git tags (`v26.10.24`) with GitHub Releases.
 - Record user-visible changes in CHANGELOG.md under **Unreleased** as you make them.
-- Colors are defined once in the `CLR_*` constants (VBS palette from the logo: green A6B727, dark green 6B7619, gray 818183/6C6C6E). Use the dark shades for text on white; keep text at WCAG AA contrast.
+- The look matches MapQuery Studio (`../MapQuery-Studio/app/src/theme.rs`): dark (default) and light themes with a blue accent. Colors are defined once in the `THEMES` map; controls are colored by role name (`bg`, `panel`, `card`, `text`, `muted`, `accent` ...) through `AddCtl(type, opts, text, bg, fg)`, and `ApplyTheme()` re-applies every role when the theme changes. Never hard-code a color in a control. Keep text at WCAG AA contrast in both themes.
+- The chosen theme is saved in `HKCU\Software\Virtual Building Supply\FABconfig` → `Theme` (`dark`/`light`).
 - Fonts: Segoe UI / Segoe UI Semibold for text, Segoe MDL2 Assets for icons (`Chr(0xE...)`).
 - Plain-language UI text, sentence case, no jargon in messages to users.
 
@@ -43,8 +44,8 @@ Owner and developer: Scott Hendricks, Virtual Building Supply, LLC (VBS). Licens
 
 ## UI structure
 
-- Dark sidebar (badge, app name, version, nav: New configuration / What's this? / Exit) and a light page with white rounded cards.
-- Main view: "Configuration details" card (name, location + Browse, database folder + Browse, Create Configuration button at bottom right) and a "Registers with" card of version chips on the right.
-- About view ("What's this?"): four step tiles and a text card ending with the GPL copyright/no-warranty notice.
-- Clickable items are "groups" (`NewGroup`/`AddPart`) with hover colors, a hand cursor and a polling timer to clear hover.
+- Laid out like MapQuery Studio: sidebar (app icon tile + name, pill-shaped nav items New configuration / What's this? that fill with the accent when selected, a "REGISTERS WITH" section of version chips, Exit at the bottom), a top bar (File and Help menus, theme button on the right), the page, and a status bar (database folder name on the left, version on the right). Cards have a 1px border (`PlaceCard`: a border layer under a fill layer).
+- Main view: an info banner (with "How it works…") and the "Configuration details" card (name, location + Browse, database folder + Browse, Create Configuration button at bottom right).
+- About view ("What's this?"): four numbered step tiles and a text card ending with the VBS logo and the GPL copyright/no-warranty notice.
+- Clickable items are "groups" (`NewGroup`/`AddPart`) with hover color roles, a hand cursor and a polling timer to clear hover. Buttons with an outline keep the outline (`grp.Edge`) out of the group's parts.
 - If FABconfig isn't run from a folder with a `map.ini`, it asks for the database folder at start-up ("Select a folder that contains a Fabrication database"). A valid database folder has a `map.ini` or a `DATABASE` folder.

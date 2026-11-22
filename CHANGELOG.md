@@ -5,6 +5,7 @@ What changed in each version of FABconfig. Versions are dates (`vYY.MM.DD`); see
 ## Unreleased
 
 ### Added
+- Light and dark themes, switched with the button at the top right. FABconfig remembers the choice for each user (in `HKEY_CURRENT_USER\Software\Virtual Building Supply\FABconfig`).
 - Before overwriting a configuration that already exists, FABconfig shows which Fabrication versions it's registered with and where it points, and warns if it wasn't made by FABconfig.
 - An overwritten `map.ini` is kept as `map.ini.bak`.
 - An overwrite also updates the configuration in any other Fabrication version it was registered with, not just the versions shown under "Registers with".
@@ -13,6 +14,8 @@ What changed in each version of FABconfig. Versions are dates (`vYY.MM.DD`); see
 - The compiled `.exe` has the sidebar logo built in, so it no longer needs the `Resources` folder next to it.
 
 ### Changed
+- New look matching MapQuery Studio: dark theme by default with a light theme, a blue accent, a sidebar with pill-shaped items and the "Registers with" versions, File and Help menus, an info banner and a status bar showing the database folder and version.
+- New app icon (a folder with a plus, in the style of MapQuery Studio's icon) for the window, taskbar and `.exe`. The VBS logo is now shown on the What's this? page.
 - The window is 20% wider, so long configuration and database paths fit.
 - The configuration location can't be inside the database folder. (Tools that mirror the database, such as `robocopy /MIR`, would delete it.)
 - A configuration folder (one whose `map.ini` points to a database somewhere else) is no longer accepted as a database folder.

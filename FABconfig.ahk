@@ -1,7 +1,7 @@
 #Requires AutoHotkey v2.0
 #SingleInstance Force
 
-;@Ahk2Exe-SetMainIcon Resources\VBS_Logo.ico
+;@Ahk2Exe-SetMainIcon Resources\FABconfig.ico
 ;@Ahk2Exe-SetProductName FABconfig
 ;@Ahk2Exe-SetDescription FABconfig - Add Fabrication Configuration
 ;@Ahk2Exe-SetCompanyName Virtual Building Supply`, LLC
@@ -75,36 +75,48 @@ DB_PATH := StrReplace(DB_DIR, "\", "/")   ; map.ini uses forward slashes
 DB_NAME := DB_DIR != "" ? Trim(IniRead(DB_DIR "\map.ini", "COMPANY-INFO", "DBNAME", "")) : ""
 NO_DB_TEXT := "No database selected. Click Browse to choose one."
 
-;======================= VBS brand palette ==========================
-; Greens and grays come from VBS_Logo.svg. The darker shades are used for
-; text and icons so they stay readable on white.
-CLR_GREEN          := "A6B727"   ; logo green: active-tab marker, focus outline
-CLR_GREEN_DARK     := "6B7619"   ; text and icons on white
-CLR_GREEN_MID      := "808D1E"   ; logo green outline
-CLR_GREEN_TINT     := "F1F4DC"   ; chips, button fill, hover
-CLR_GREEN_TINT2    := "E4EABF"   ; hover on tinted buttons
-CLR_GREEN_HOVER    := "5A6315"   ; hover on the dark green button
-CLR_GRAY_DARK      := "6C6C6E"   ; logo gray outline
-CLR_SIDEBAR        := "2F3033"
-CLR_SIDEBAR_HOVER  := "393B3F"
-CLR_SIDEBAR_ACTIVE := "43454A"
-CLR_SIDEBAR_TEXT   := "C9CACC"
-CLR_SIDEBAR_MUTED  := "A9AAAD"
-CLR_PAGE           := "F3F4F6"   ; window background
-CLR_CARD           := "FFFFFF"
-CLR_FIELD          := "F3F4F6"   ; text box fill
-CLR_TEXT           := "2B2D31"
-CLR_MUTED          := "6C6C6E"
+;======================= Colors (MapQuery Studio look) ==============
+; The same dark and light palettes as MapQuery Studio (its theme.rs).
+; Controls are colored by role name (bg, text, muted ...), not by color, so
+; switching theme only has to re-apply the roles (see ApplyTheme).
+; soft = accent tint on bg (info banner); chip = accent tint on the panel and
+; cards (version chips, step numbers); tile = the app icon's color.
+THEMES := Map(
+    "dark", {
+        bg: "181A1F", panel: "1F2228", card: "262930",
+        text: "E2E5EB", muted: "9AA0AC",
+        border: "383C46", edge: "545B69", field: "1E2026",
+        btn: "3A3F4B", btnHover: "4A505E", navHover: "2A2E36",
+        accent: "2F68E0", accentHover: "3A75F0", accentText: "8DB4FF", onAccent: "FFFFFF",
+        soft: "222D43", chip: "28344A", tile: "5B8FF9"
+    },
+    "light", {
+        bg: "F4F6F9", panel: "FAFBFD", card: "FFFFFF",
+        text: "1C2028", muted: "5F6775",
+        border: "D6DBE3", edge: "C9D0DB", field: "FBFCFD",
+        btn: "ECEFF4", btnHover: "E0E6F0", navHover: "EEF1F6",
+        accent: "2563EB", accentHover: "1D4ED8", accentText: "1D4ED8", onAccent: "FFFFFF",
+        soft: "E3EBFD", chip: "E3EBFD", tile: "5B8FF9"
+    }
+)
+
+; The chosen theme is remembered per user. Dark is the default, as in MapQuery Studio.
+SETTINGS_KEY := "HKCU\Software\Virtual Building Supply\FABconfig"
+theme := RegRead(SETTINGS_KEY, "Theme", "dark")
+if !THEMES.Has(theme)
+    theme := "dark"
 
 FONT      := "Segoe UI"
 FONT_SEMI := "Segoe UI Semibold"
 ICON_FONT := "Segoe MDL2 Assets"   ; built into Windows 10 and 11
 
-; Logo files live in a Resources folder next to the script. The compiled .exe
-; has both built in (the icon through SetMainIcon, the badge below), so it
+; Picture files live in a Resources folder next to the script. The compiled
+; .exe has them built in (the icon through SetMainIcon, the PNGs below), so it
 ; doesn't need the folder.
-LOGO_ICO   := A_ScriptDir "\Resources\VBS_Logo.ico"
+APP_ICO    := A_ScriptDir "\Resources\FABconfig.ico"
+APP_PNG    := A_ScriptDir "\Resources\FABconfig.png"
 LOGO_BADGE := A_ScriptDir "\Resources\VBS_Logo_Badge.png"
+;@Ahk2Exe-AddResource Resources\FABconfig.png, FABCONFIG_ICON
 ;@Ahk2Exe-AddResource Resources\VBS_Logo_Badge.png, VBS_LOGO_BADGE
 
 ABOUT_TEXT := "
@@ -114,15 +126,14 @@ FABconfig adds the Fabrication database in this folder to Autodesk Fabrication (
 The map.ini it writes points the Database, Items, Images, Profiles, Reports and Scripts folders at this database. Projects, DXFs, Blocks and Backups stay in the configuration folder, so local work stays separate from the shared database.
 
 Nothing in the database folder itself is changed. Running it again with the same name updates that configuration.
-
-Copyright © 2026 Virtual Building Supply, LLC. FABconfig is free software under the GNU General Public License v3 and comes with ABSOLUTELY NO WARRANTY. See the LICENSE file for details.
 )"
+COPYRIGHT_TEXT := "Copyright © 2026 Virtual Building Supply, LLC. FABconfig is free software under the GNU General Public License v3 and comes with ABSOLUTELY NO WARRANTY. See the LICENSE file for details."
 
 STEPS := [
-    {Glyph: 0xE8B7, Color: CLR_GREEN_DARK, Title: "Create folder", Text: "Its own folder on this PC"},
-    {Glyph: 0xE8A5, Color: CLR_GRAY_DARK,  Title: "Write map.ini", Text: "Points Fabrication at this database"},
-    {Glyph: 0xE8B9, Color: CLR_GREEN_MID,  Title: "Copy picture",  Text: "config.png for the start-up list"},
-    {Glyph: 0xE73E, Color: "4A4B4E",       Title: "Register",      Text: "Fabrication " YEAR_FROM "–" YEAR_TO}
+    {Title: "Create folder", Text: "Its own folder on this PC"},
+    {Title: "Write map.ini", Text: "Points Fabrication at this database"},
+    {Title: "Copy picture",  Text: "config.png for the start-up list"},
+    {Title: "Register",      Text: "Fabrication " YEAR_FROM "–" YEAR_TO}
 ]
 
 ;======================= Scaling ====================================
@@ -136,21 +147,23 @@ settingLoc  := false
 mainCtrls   := []
 aboutCtrls  := []
 ctl    := {}
-groups := []           ; clickable groups (nav items, buttons, cards)
+groups := []           ; clickable groups (nav items, buttons, menus)
 hoverMap := Map()      ; control hwnd -> group id
 hotId  := 0            ; group currently under the mouse
 created := []          ; every control, in the order it was added
+themed  := []          ; {C, Bg, Fg}: the color roles of each control
+fields  := []          ; text boxes (their border shows focus)
 
-if FileExist(LOGO_ICO)
-    TraySetIcon(LOGO_ICO)          ; also becomes the window icon
+if FileExist(APP_ICO)
+    TraySetIcon(APP_ICO)           ; also becomes the window icon
 else if !A_IsCompiled
-    TraySetIcon(A_WinDir "\System32\shell32.dll", 239)
+    TraySetIcon(A_WinDir "\System32\shell32.dll", 4)
 
 ;======================= Build GUI ==================================
 ; +0x2000000 (WS_CLIPCHILDREN) stops the window background from painting
 ; over the controls, which reduces flicker when resizing.
 g := Gui("+Resize -DPIScale +0x2000000", WIN_TITLE)
-g.BackColor := CLR_PAGE
+g.BackColor := C("bg")
 g.OnEvent("Close",  (*) => ExitApp())
 g.OnEvent("Escape", OnEscape)
 g.OnEvent("Size",   OnResize)
@@ -158,106 +171,136 @@ g.Opt("+OwnDialogs")   ; folder pickers and messages stay on top of this window
 OnMessage(0x200, OnMouseMove)    ; WM_MOUSEMOVE: hover effects
 OnMessage(0x20,  OnSetCursor)    ; WM_SETCURSOR: hand cursor on clickable items
 
+; ---- Backgrounds: sidebar, top bar, status bar ----
+ctl.Side       := AddCtl("Text", "", "", "panel")
+ctl.SideLine   := AddCtl("Text", "", "", "border")
+ctl.Top        := AddCtl("Text", "", "", "bg")
+ctl.TopLine    := AddCtl("Text", "", "", "border")
+ctl.Status     := AddCtl("Text", "", "", "panel")
+ctl.StatusLine := AddCtl("Text", "", "", "border")
+
 ; ---- Sidebar ----
-ctl.Side := AddCtl("Text", "Background" CLR_SIDEBAR)
-badgeBmp := A_IsCompiled ? LoadPngResource("VBS_LOGO_BADGE", S(64)) : 0
-if badgeBmp {
-    ctl.Badge := AddCtl("Picture", "w" S(64) " h" S(64), "HBITMAP:" badgeBmp)
-} else if FileExist(LOGO_BADGE) {
-    ctl.Badge := AddCtl("Picture", "w" S(64) " h" S(64), LOGO_BADGE)
+tileBmp := LoadPng("FABCONFIG_ICON", APP_PNG, S(34), C("panel"))
+if tileBmp {
+    ctl.Tile := AddCtl("Picture", "w" S(34) " h" S(34), "HBITMAP:" tileBmp)
 } else {
-    SetF("s22 c" CLR_GREEN_DARK, ICON_FONT)
-    ctl.Badge := AddCtl("Text", "Center +0x200 Background" CLR_CARD, Chr(0xE8B7))
+    SetF("s14", ICON_FONT)
+    ctl.Tile := AddCtl("Text", "Center +0x200", Chr(0xE8F4), "tile", "onAccent")   ; NewFolder glyph
 }
-SetF("s13 cFFFFFF", FONT_SEMI)
-ctl.AppName := AddCtl("Text", "Center Background" CLR_SIDEBAR, APP_NAME)
-SetF("s9 c" CLR_SIDEBAR_MUTED)
-ctl.AppVer := AddCtl("Text", "Center Background" CLR_SIDEBAR, APP_VERSION)
+SetF("s13")
+ctl.AppName := AddCtl("Text", "+0x200", APP_NAME, "panel", "text")
 
 navMain  := MakeNav(0xE710, "New configuration", (*) => ShowView("main"))
 navAbout := MakeNav(0xE897, "What's this?",      (*) => ShowView("about"))
-navExit  := MakeNav(0xE7E8, "Exit",              (*) => ExitApp())
+
+ctl.Div1 := AddCtl("Text", "", "", "border")
+SetF("s8")
+ctl.VerHead := AddCtl("Text", "", "REGISTERS WITH", "panel", "muted")
+SetF("s9")
+ctl.VerSub := AddCtl("Text", "", "Autodesk Fabrication versions", "panel", "muted")
+chips := []
+SetF("s9", FONT_SEMI)
+Loop (YEAR_TO - YEAR_FROM + 1)
+    chips.Push(AddCtl("Text", "Center +0x200", YEAR_FROM + A_Index - 1, "chip", "accentText"))
+
+ctl.Div2 := AddCtl("Text", "", "", "border")
+navExit := MakeNav(0xE7E8, "Exit", (*) => ExitApp())
+
+; ---- Top bar: menus and the theme button ----
+fileMenu := Menu()
+fileMenu.Add("New configuration", (*) => ShowView("main"))
+fileMenu.Add()
+fileMenu.Add("Exit", (*) => ExitApp())
+helpMenu := Menu()
+helpMenu.Add("What's this?", (*) => ShowView("about"))
+menuFile := MakeMenu("File", fileMenu)
+menuHelp := MakeMenu("Help", helpMenu)
+btnTheme := MakeButton(Ord(ThemeGlyph()), "", "btn", "btnHover", "text", ToggleTheme, true)
+
+; ---- Status bar ----
+SetF("s9")
+ctl.StatusL := AddCtl("Text", "+0x200", StatusText(), "panel", "muted")
+ctl.StatusR := AddCtl("Text", "Right +0x200", APP_VERSION, "panel", "muted")
 
 ; ---- Main view ----
-SetF("s17 c" CLR_TEXT, FONT_SEMI)
-ctl.Head := AddCtl("Text", "Background" CLR_PAGE, "New configuration")
-SetF("s10 c" CLR_MUTED)
-ctl.Sub := AddCtl("Text", "Background" CLR_PAGE, "Add this database to Autodesk Fabrication as a configuration.")
-mainCtrls.Push(ctl.Head, ctl.Sub)
+ctl.Banner := AddCtl("Text", "", "", "soft")
+SetF("s12", ICON_FONT)
+ctl.BannerIcon := AddCtl("Text", "Center +0x200", Chr(0xE946), "soft", "accentText")   ; Info glyph
+SetF("s10")
+ctl.BannerText := AddCtl("Text", "+0x200", "Add this database to Autodesk Fabrication as a configuration.", "soft", "text")
+mainCtrls.Push(ctl.Banner, ctl.BannerIcon, ctl.BannerText)
+btnHow := MakeButton(0, "How it works…", "btn", "btnHover", "text", (*) => ShowView("about"), true, mainCtrls)
 
-ctl.Card := AddCtl("Text", "Background" CLR_CARD)
-SetF("s11 c" CLR_TEXT, FONT_SEMI)
-ctl.CardTitle := AddCtl("Text", "Background" CLR_CARD, "Configuration details")
-SetF("s9 c" CLR_MUTED)
-ctl.NameLbl := AddCtl("Text", "Background" CLR_CARD, "Configuration name")
+ctl.CardEdge := AddCtl("Text", "", "", "border")
+ctl.Card     := AddCtl("Text", "", "", "card")
+SetF("s12", FONT_SEMI)
+ctl.CardTitle := AddCtl("Text", "", "Configuration details", "card", "text")
+SetF("s9")
+ctl.NameLbl := AddCtl("Text", "", "Configuration name", "card", "muted")
+mainCtrls.Push(ctl.CardEdge, ctl.Card, ctl.CardTitle, ctl.NameLbl)
 fName := MakeField(DB_NAME)
-SetF("s9 c" CLR_MUTED)
-ctl.LocLbl := AddCtl("Text", "Background" CLR_CARD, "Configuration location")
+SetF("s9")
+ctl.LocLbl := AddCtl("Text", "", "Configuration location", "card", "muted")
+mainCtrls.Push(ctl.LocLbl)
 fLoc := MakeField(CONFIG_ROOT "\" DB_NAME)   ; just the root if there's no DBNAME
-btnBrowse := MakeButton(0xE838, "Browse", CLR_GREEN_TINT, CLR_GREEN_TINT2, CLR_GREEN_DARK, BrowseLocation)
-SetF("s9 c" CLR_MUTED)
-ctl.DbLbl := AddCtl("Text", "Background" CLR_CARD, "Fabrication database folder")
+btnBrowse := MakeButton(0xE838, "Browse…", "btn", "btnHover", "text", BrowseLocation, true, mainCtrls)
+SetF("s9")
+ctl.DbLbl := AddCtl("Text", "", "Fabrication database folder", "card", "muted")
+mainCtrls.Push(ctl.DbLbl)
 fDb := MakeField(DB_DIR != "" ? DB_DIR : NO_DB_TEXT, true)
-btnDb := MakeButton(0xE838, "Browse", CLR_GREEN_TINT, CLR_GREEN_TINT2, CLR_GREEN_DARK, ChooseDatabase)
-btnCreate := MakeButton(0xE710, "Create Configuration", CLR_GREEN_DARK, CLR_GREEN_HOVER, "FFFFFF", SaveConfig)
-mainCtrls.Push(ctl.Card, ctl.CardTitle, ctl.NameLbl, ctl.LocLbl, ctl.DbLbl)
+btnDb := MakeButton(0xE838, "Browse…", "btn", "btnHover", "text", ChooseDatabase, true, mainCtrls)
+btnCreate := MakeButton(0xE710, "Create Configuration", "accent", "accentHover", "onAccent", SaveConfig, false, mainCtrls, true)
 
 ctl.Name := fName.Edit
 ctl.Loc  := fLoc.Edit
 ctl.Name.OnEvent("Change", OnNameChange)
 ctl.Loc.OnEvent("Change", OnLocChange)
 
-
-; Versions card
-ctl.VerCard := AddCtl("Text", "Background" CLR_CARD)
-SetF("s10 c" CLR_TEXT, FONT_SEMI)
-ctl.VerTitle := AddCtl("Text", "Background" CLR_CARD, "Registers with")
-SetF("s9 c" CLR_MUTED)
-ctl.VerSub := AddCtl("Text", "Background" CLR_CARD, "Autodesk Fabrication versions")
-mainCtrls.Push(ctl.VerCard, ctl.VerTitle, ctl.VerSub)
-chips := []
-SetF("s9 c" CLR_GREEN_DARK, FONT_SEMI)
-Loop (YEAR_TO - YEAR_FROM + 1) {
-    chip := AddCtl("Text", "Center +0x200 Background" CLR_GREEN_TINT, YEAR_FROM + A_Index - 1)
-    chips.Push(chip)
-    mainCtrls.Push(chip)
-}
-
 ; Enter key saves (a hidden default button)
 AddCtl("Button", "Default Hidden", "Save").OnEvent("Click", (*) => (currentView = "main") && SaveConfig())
 
 ; ---- About view ----
-SetF("s17 c" CLR_TEXT, FONT_SEMI)
-ctl.AHead := AddCtl("Text", "Background" CLR_PAGE, "What this program does")
-SetF("s10 c" CLR_MUTED)
-ctl.ASub := AddCtl("Text", "Background" CLR_PAGE, "Here's what happens when you click Create Configuration.")
+SetF("s13", FONT_SEMI)
+ctl.AHead := AddCtl("Text", "", "What this program does", "bg", "text")
+SetF("s10")
+ctl.ASub := AddCtl("Text", "", "Here's what happens when you click Create Configuration.", "bg", "muted")
 aboutCtrls.Push(ctl.AHead, ctl.ASub)
 
-for st in STEPS {
-    st.Bg := AddCtl("Text", "Background" CLR_CARD)
-    SetF("s15 cFFFFFF", ICON_FONT)
-    st.Icon := AddCtl("Text", "Center +0x200 Background" st.Color, Chr(st.Glyph))
-    SetF("s10 c" CLR_TEXT, FONT_SEMI)
-    st.Head := AddCtl("Text", "Background" CLR_CARD, st.Title)
-    SetF("s9 c" CLR_MUTED)
-    st.Desc := AddCtl("Text", "Background" CLR_CARD, st.Text)
-    aboutCtrls.Push(st.Bg, st.Icon, st.Head, st.Desc)
+for i, st in STEPS {
+    st.Edge := AddCtl("Text", "", "", "border")
+    st.Bg   := AddCtl("Text", "", "", "card")
+    SetF("s10", FONT_SEMI)
+    st.Num  := AddCtl("Text", "Center +0x200", i, "chip", "accentText")
+    st.Head := AddCtl("Text", "", st.Title, "card", "text")
+    SetF("s9")
+    st.Desc := AddCtl("Text", "", st.Text, "card", "muted")
+    aboutCtrls.Push(st.Edge, st.Bg, st.Num, st.Head, st.Desc)
 }
 
-ctl.ACard := AddCtl("Text", "Background" CLR_CARD)
-SetF("s10 c" CLR_TEXT)
-ctl.ABody := AddCtl("Text", "Background" CLR_CARD, ABOUT_TEXT)
-aboutCtrls.Push(ctl.ACard, ctl.ABody)
+ctl.AEdge := AddCtl("Text", "", "", "border")
+ctl.ACard := AddCtl("Text", "", "", "card")
+SetF("s10")
+ctl.ABody := AddCtl("Text", "", ABOUT_TEXT, "card", "text")
+; The VBS logo stays on this page, beside the copyright line.
+badgeBmp := LoadPng("VBS_LOGO_BADGE", LOGO_BADGE, S(32), "FFFFFF")
+if badgeBmp
+    ctl.Badge := AddCtl("Picture", "w" S(32) " h" S(32), "HBITMAP:" badgeBmp)
+else
+    ctl.Badge := AddCtl("Text", "", "", "card")
+SetF("s9")
+ctl.ACopy := AddCtl("Text", "", COPYRIGHT_TEXT, "card", "muted")
+aboutCtrls.Push(ctl.AEdge, ctl.ACard, ctl.ABody, ctl.Badge, ctl.ACopy)
 
 ;======================= Show window ================================
 MonitorGetWorkArea(MonitorGetPrimary(), &waL, &waT, &waR, &waB)
 winW := Min(S(1104), waR - waL - S(40))
-winH := Min(S(560), waB - waT - S(60))
+winH := Min(S(600), waB - waT - S(60))
 g.Opt("+MinSize" winW "x" winH)
 
 StackControls()
 ShowView("main")
 Layout(winW, winH)
+SetTitleBarTheme()
 g.Show("w" winW " h" winH)
 ctl.Name.Focus()
 if (DB_DIR = "")
@@ -267,12 +310,22 @@ return
 ;======================= Building blocks ============================
 SetF(opts, face := FONT) => g.SetFont("norm " opts, face)
 
+; The color for a role name in the current theme.
+C(role) => THEMES[theme].%role%
+
 ; Every control goes through AddCtl so we know the order it was created in.
 ; +0x4000000 (WS_CLIPSIBLINGS) stops a control from painting over the
 ; controls stacked on top of it (for example a card painting over its text).
-AddCtl(type, opts := "", text := "") {
+; bg and fg are color roles; they are re-applied when the theme changes.
+AddCtl(type, opts := "", text := "", bg := "", fg := "") {
+    if (bg != "")
+        opts := "Background" C(bg) " " opts
+    if (fg != "")
+        g.SetFont("c" C(fg))
     c := g.Add(type, opts " +0x4000000", text)
     created.Push(c)
+    if (bg != "" || fg != "")
+        themed.Push({C: c, Bg: bg, Fg: fg})
     return c
 }
 
@@ -286,9 +339,10 @@ StackControls() {
             , "uint", 0x213)                             ; NOMOVE|NOSIZE|NOACTIVATE|NOOWNERZORDER
 }
 
-; A group is a set of controls that act as one clickable item with a hover color.
-NewGroup(base, hover, onClick) {
-    grp := {Id: groups.Length + 1, Normal: base, Hover: hover, OnClick: onClick, Parts: []}
+; A group is a set of controls that act as one clickable item with a hover
+; color. Normal and Hover are color roles.
+NewGroup(normal, hover, onClick) {
+    grp := {Id: groups.Length + 1, Normal: normal, Hover: hover, OnClick: onClick, Parts: []}
     groups.Push(grp)
     return grp
 }
@@ -300,9 +354,9 @@ AddPart(grp, ctrl) {
     return ctrl
 }
 
-Paint(grp, clr) {
+Paint(grp, role) {
     for c in grp.Parts
-        c.Opt("+Background" clr)
+        c.Opt("+Background" C(role))
     for c in grp.Parts
         RedrawCtl(c)
 }
@@ -312,100 +366,193 @@ RedrawCtl(c) {
     DllCall("RedrawWindow", "ptr", c.Hwnd, "ptr", 0, "ptr", 0, "uint", 0x185)   ; INVALIDATE|ERASE|ALLCHILDREN|UPDATENOW
 }
 
+; A sidebar item: a rounded pill that is filled with the accent color when selected.
 MakeNav(glyph, label, onClick) {
-    grp := NewGroup(CLR_SIDEBAR, CLR_SIDEBAR_HOVER, onClick)
-    grp.Bg := AddPart(grp, AddCtl("Text", "Background" CLR_SIDEBAR))
-    SetF("s12 c" CLR_SIDEBAR_TEXT, ICON_FONT)
-    grp.Icon := AddPart(grp, AddCtl("Text", "Center +0x200 Background" CLR_SIDEBAR, Chr(glyph)))
-    SetF("s10 c" CLR_SIDEBAR_TEXT)
-    grp.Label := AddPart(grp, AddCtl("Text", "+0x200 Background" CLR_SIDEBAR, label))
-    grp.Ind := AddCtl("Text", "Hidden Background" CLR_GREEN)   ; active-tab marker
+    grp := NewGroup("panel", "navHover", onClick)
+    grp.Bg := AddPart(grp, AddCtl("Text", "", "", "panel"))
+    SetF("s12", ICON_FONT)
+    grp.Icon := AddPart(grp, AddCtl("Text", "Center +0x200", Chr(glyph), "panel", "text"))
+    SetF("s11")
+    grp.Label := AddPart(grp, AddCtl("Text", "+0x200", label, "panel", "text"))
     return grp
 }
 
 SetNavActive(grp, on) {
-    grp.Normal := on ? CLR_SIDEBAR_ACTIVE : CLR_SIDEBAR
-    grp.Hover := on ? CLR_SIDEBAR_ACTIVE : CLR_SIDEBAR_HOVER
-    fg := on ? "FFFFFF" : CLR_SIDEBAR_TEXT
+    grp.Normal := on ? "accent" : "panel"
+    grp.Hover := on ? "accent" : "navHover"
+    fg := C(on ? "onAccent" : "text")
     grp.Icon.SetFont("c" fg)
     grp.Label.SetFont("c" fg)
-    grp.Ind.Visible := on
     Paint(grp, grp.Normal)
 }
 
-MakeButton(glyph, label, base, hover, fg, onClick) {
-    grp := NewGroup(base, hover, onClick)
-    grp.Bg := AddPart(grp, AddCtl("Text", "Background" base))
-    SetF("s11 c" fg, ICON_FONT)
-    grp.Icon := AddPart(grp, AddCtl("Text", "Center +0x200 Background" base, Chr(glyph)))
-    SetF("s10 c" fg, FONT_SEMI)
-    grp.Label := AddPart(grp, AddCtl("Text", "+0x200 Background" base, label))
-    grp.Label.GetPos(, , &lw)            ; added without a width, so this is the text's width
-    grp.LabelW := lw / SCALE
-    mainCtrls.Push(grp.Parts*)
+; A top-bar menu title (File, Help) that drops down a menu.
+MakeMenu(label, m) {
+    grp := NewGroup("bg", "btn", (*) => ShowMenu(grp, m))
+    SetF("s10")
+    grp.Bg := AddPart(grp, AddCtl("Text", "Center +0x200", label, "bg", "text"))
     return grp
 }
 
-; A rounded text box: a border layer (turns green when focused), a fill layer,
-; and a borderless Edit on top. isStatic shows read-only text instead.
+ShowMenu(grp, m) {
+    grp.Bg.GetPos(&x, &y, , &h)
+    SetHot(0)
+    m.Show(x, y + h)
+}
+
+; A button: glyph and/or label on a rounded fill. bordered adds a 1px outline
+; (the outline isn't a part, so it keeps its color on hover). glyph 0 = no
+; icon, label "" = icon only. Its controls are added to list (a view's
+; control list) when given.
+MakeButton(glyph, label, base, hover, fg, onClick, bordered := false, list := 0, semi := false) {
+    grp := NewGroup(base, hover, onClick)
+    if bordered
+        grp.Edge := AddCtl("Text", "", "", "edge")
+    grp.Bg := AddPart(grp, AddCtl("Text", "", "", base))
+    SetF("s11", ICON_FONT)
+    grp.Icon := AddPart(grp, AddCtl("Text", "Center +0x200", glyph ? Chr(glyph) : "", base, fg))
+    SetF("s10", semi ? FONT_SEMI : FONT)
+    grp.Label := AddPart(grp, AddCtl("Text", "+0x200", label, base, fg))
+    grp.Label.GetPos(, , &lw)            ; added without a width, so this is the text's width
+    grp.LabelW := label = "" ? 0 : lw / SCALE
+    grp.HasIcon := glyph != 0
+    if list {
+        if bordered
+            list.Push(grp.Edge)
+        list.Push(grp.Parts*)
+    }
+    return grp
+}
+
+; A rounded text box: a border layer (turns accent-colored when focused), a
+; fill layer, and a borderless Edit on top. isStatic shows read-only text instead.
 MakeField(value, isStatic := false) {
-    f := {}
-    f.Border := AddCtl("Text", "Background" CLR_FIELD)
-    f.Fill   := AddCtl("Text", "Background" CLR_FIELD)
+    f := {Focused: false}
+    f.Border := AddCtl("Text", "", "", "edge")
+    f.Fill   := AddCtl("Text", "", "", "field")
+    SetF("s10")
     if isStatic {
-        SetF("s10 c" CLR_MUTED)
-        f.Edit := AddCtl("Text", "+0x8000 +0x200 Background" CLR_FIELD, value)   ; 0x8000: shorten long paths with "..."
+        f.Edit := AddCtl("Text", "+0x8000 +0x200", value, "field", "text")   ; 0x8000: shorten long paths with "..."
     } else {
-        SetF("s10 c" CLR_TEXT)
-        f.Edit := AddCtl("Edit", "-E0x200 r1 -Wrap Background" CLR_FIELD, value)
+        f.Edit := AddCtl("Edit", "-E0x200 r1 -Wrap", value, "field", "text")
         f.Edit.OnEvent("Focus",     (*) => FieldFocus(f, true))
         f.Edit.OnEvent("LoseFocus", (*) => FieldFocus(f, false))
     }
+    fields.Push(f)
     mainCtrls.Push(f.Border, f.Fill, f.Edit)
     return f
 }
 
 FieldFocus(f, on) {
-    f.Border.Opt("+Background" (on ? CLR_GREEN : CLR_FIELD))
+    f.Focused := on
+    f.Border.Opt("+Background" C(on ? "accent" : "edge"))
     RedrawCtl(f.Border)
     RedrawCtl(f.Fill)
     RedrawCtl(f.Edit)
 }
 
-; Loads a PNG built into the compiled .exe (AddResource stores it as RT_RCDATA)
-; and scales it to size x size pixels with GDI+. Returns an HBITMAP, or 0.
-LoadPngResource(name, size) {
+; Loads a PNG (built into the compiled .exe as an RT_RCDATA resource, or from
+; file when running the script) and draws it at size x size pixels with GDI+,
+; over the background color bg (hex RGB) where the PNG is transparent.
+; Returns an HBITMAP, or 0 if the picture isn't there.
+LoadPng(resName, file, size, bg) {
+    stream := 0, src := 0, hbm := 0
+    if A_IsCompiled {
+        stream := ResourceStream(resName)
+        if !stream
+            return 0
+    } else if !FileExist(file) {
+        return 0
+    }
+    DllCall("LoadLibrary", "str", "gdiplus")
+    si := Buffer(24, 0), NumPut("uint", 1, si)                ; GdiplusStartupInput, version 1
+    token := 0
+    DllCall("gdiplus\GdiplusStartup", "ptr*", &token, "ptr", si, "ptr", 0)
+    if stream
+        DllCall("gdiplus\GdipCreateBitmapFromStream", "ptr", stream, "ptr*", &src)
+    else
+        DllCall("gdiplus\GdipCreateBitmapFromFile", "wstr", file, "ptr*", &src)
+    if src {
+        ; Draw onto a size x size bitmap with high-quality scaling (the PNGs are
+        ; 256 px), then convert it over the background color.
+        dst := 0, gfx := 0
+        DllCall("gdiplus\GdipCreateBitmapFromScan0", "int", size, "int", size, "int", 0, "int", 0x26200A, "ptr", 0, "ptr*", &dst)   ; 32bppARGB
+        DllCall("gdiplus\GdipGetImageGraphicsContext", "ptr", dst, "ptr*", &gfx)
+        DllCall("gdiplus\GdipSetInterpolationMode", "ptr", gfx, "int", 7)      ; HighQualityBicubic
+        DllCall("gdiplus\GdipSetPixelOffsetMode", "ptr", gfx, "int", 4)        ; HighQuality
+        DllCall("gdiplus\GdipDrawImageRectI", "ptr", gfx, "ptr", src, "int", 0, "int", 0, "int", size, "int", size)
+        DllCall("gdiplus\GdipDeleteGraphics", "ptr", gfx)
+        DllCall("gdiplus\GdipCreateHBITMAPFromBitmap", "ptr", dst, "ptr*", &hbm, "uint", 0xFF000000 | Integer("0x" bg))
+        DllCall("gdiplus\GdipDisposeImage", "ptr", dst)
+        DllCall("gdiplus\GdipDisposeImage", "ptr", src)
+    }
+    if stream
+        ObjRelease(stream)
+    DllCall("gdiplus\GdiplusShutdown", "ptr", token)
+    return hbm
+}
+
+; A memory stream over a resource that AddResource built into the .exe, or 0.
+ResourceStream(name) {
     hMod := DllCall("GetModuleHandle", "ptr", 0, "ptr")
     hRes := DllCall("FindResource", "ptr", hMod, "str", name, "ptr", 10, "ptr")   ; 10 = RT_RCDATA
     if !hRes
         return 0
     bytes := DllCall("SizeofResource", "ptr", hMod, "ptr", hRes, "uint")
     pData := DllCall("LockResource", "ptr", DllCall("LoadResource", "ptr", hMod, "ptr", hRes, "ptr"), "ptr")
-    stream := DllCall("shlwapi\SHCreateMemStream", "ptr", pData, "uint", bytes, "ptr")
-    if !stream
-        return 0
+    return DllCall("shlwapi\SHCreateMemStream", "ptr", pData, "uint", bytes, "ptr")
+}
 
-    DllCall("LoadLibrary", "str", "gdiplus")
-    si := Buffer(24, 0), NumPut("uint", 1, si)                ; GdiplusStartupInput, version 1
-    DllCall("gdiplus\GdiplusStartup", "ptr*", &token := 0, "ptr", si, "ptr", 0)
-    hbm := 0
-    DllCall("gdiplus\GdipCreateBitmapFromStream", "ptr", stream, "ptr*", &src := 0)
-    if src {
-        ; Draw onto a size x size bitmap with high-quality scaling (the logo is
-        ; 256 px), then convert it with a white background (the badge is on white).
-        DllCall("gdiplus\GdipCreateBitmapFromScan0", "int", size, "int", size, "int", 0, "int", 0x26200A, "ptr", 0, "ptr*", &dst := 0)   ; 32bppARGB
-        DllCall("gdiplus\GdipGetImageGraphicsContext", "ptr", dst, "ptr*", &gfx := 0)
-        DllCall("gdiplus\GdipSetInterpolationMode", "ptr", gfx, "int", 7)      ; HighQualityBicubic
-        DllCall("gdiplus\GdipSetPixelOffsetMode", "ptr", gfx, "int", 4)        ; HighQuality
-        DllCall("gdiplus\GdipDrawImageRectI", "ptr", gfx, "ptr", src, "int", 0, "int", 0, "int", size, "int", size)
-        DllCall("gdiplus\GdipDeleteGraphics", "ptr", gfx)
-        DllCall("gdiplus\GdipCreateHBITMAPFromBitmap", "ptr", dst, "ptr*", &hbm, "uint", 0xFFFFFFFF)
-        DllCall("gdiplus\GdipDisposeImage", "ptr", dst)
-        DllCall("gdiplus\GdipDisposeImage", "ptr", src)
+;======================= Theme ======================================
+ThemeGlyph() => Chr(theme = "dark" ? 0xE708 : 0xE706)   ; moon in dark, sun in light
+
+ToggleTheme(*) {
+    global theme := (theme = "dark") ? "light" : "dark"
+    try RegWrite(theme, "REG_SZ", SETTINGS_KEY, "Theme")
+    SetHot(0)
+    ApplyTheme()
+}
+
+; Re-applies every control's color roles in the current theme.
+ApplyTheme() {
+    g.BackColor := C("bg")
+    for r in themed {
+        if (r.Bg != "")
+            r.C.Opt("+Background" C(r.Bg))
+        if (r.Fg != "")
+            r.C.SetFont("c" C(r.Fg))
     }
-    ObjRelease(stream)
-    DllCall("gdiplus\GdiplusShutdown", "ptr", token)
-    return hbm
+    for f in fields
+        if f.Focused
+            f.Border.Opt("+Background" C("accent"))
+    btnTheme.Icon.Text := ThemeGlyph()
+    if (ctl.Tile.Type = "Pic") {
+        ; The icon's rounded corners are drawn over the sidebar color.
+        if (bmp := LoadPng("FABCONFIG_ICON", APP_PNG, S(34), C("panel")))
+            ctl.Tile.Value := "HBITMAP:" bmp
+    }
+    SetTitleBarTheme()
+    g.GetClientPos(, , &w, &h)
+    Layout(w, h)
+    SetNavActive(navMain,  currentView = "main")
+    SetNavActive(navAbout, currentView = "about")
+    DllCall("RedrawWindow", "ptr", g.Hwnd, "ptr", 0, "ptr", 0, "uint", 0x185)
+}
+
+; A dark title bar in the dark theme (Windows 10 20H1 and later; older
+; versions ignore it).
+SetTitleBarTheme() {
+    dark := theme = "dark"
+    try DllCall("dwmapi\DwmSetWindowAttribute", "ptr", g.Hwnd, "int", 20, "int*", dark, "int", 4)   ; DWMWA_USE_IMMERSIVE_DARK_MODE
+    DllCall("SetWindowPos", "ptr", g.Hwnd, "ptr", 0, "int", 0, "int", 0, "int", 0, "int", 0
+        , "uint", 0x37)   ; FRAMECHANGED|NOMOVE|NOSIZE|NOZORDER|NOACTIVATE: redraw the title bar
+}
+
+StatusText() {
+    if (DB_DIR = "")
+        return "No database selected"
+    SplitPath(DB_DIR, &folder)
+    return "Database: " folder
 }
 
 ;======================= Layout =====================================
@@ -428,100 +575,127 @@ RoundCorners(ctrl, r) {
     DllCall("SetWindowRgn", "ptr", ctrl.Hwnd, "ptr", rgn, "int", true)
 }
 
+; A card with a 1px border: the border layer and the fill on top of it.
+PlaceCard(edge, fill, x, y, w, h, r := 10) {
+    M(edge, x,     y,     w,     h,     r)
+    M(fill, x + 1, y + 1, w - 2, h - 2, r)
+}
+
 PlaceNav(grp, y) {
-    M(grp.Bg,    0,  y,     200, 40)
-    M(grp.Ind,   0,  y + 8, 4,   24)
-    M(grp.Icon,  20, y,     24,  40)
-    M(grp.Label, 54, y,     140, 40)
+    M(grp.Bg,    12, y,     204, 40, 8)
+    M(grp.Icon,  22, y + 4, 24,  32)
+    M(grp.Label, 54, y + 4, 156, 32)
 }
 
-PlaceButton(grp, x, y, w, h) {
-    M(grp.Bg, x, y, w, h, 10)
-    lw := Min(grp.LabelW + 4, w - 46)
-    sx := x + (w - (20 + 8 + lw)) / 2   ; center icon + label together
-    M(grp.Icon,  sx,      y, 20, h)
-    M(grp.Label, sx + 28, y, lw, h)
+PlaceButton(grp, x, y, w, h, r := 6) {
+    if grp.HasProp("Edge")
+        PlaceCard(grp.Edge, grp.Bg, x, y, w, h, r)
+    else
+        M(grp.Bg, x, y, w, h, r)
+    if (grp.LabelW = 0) {                ; icon only
+        M(grp.Icon,  x + 1, y + 1, w - 2, h - 2)
+        M(grp.Label, x, y, 0, 0)
+        return
+    }
+    iw := grp.HasIcon ? 28 : 0           ; icon (20) and the gap after it (8)
+    lw := Min(grp.LabelW + 4, w - iw - 16)
+    sx := x + (w - (iw + lw)) / 2        ; center icon + label together
+    M(grp.Icon,  sx,      y + 1, iw ? 20 : 0, h - 2)
+    M(grp.Label, sx + iw, y + 1, lw,          h - 2)
 }
 
-PlaceField(f, x, y, w, h := 38) {
-    M(f.Border, x,       y,       w,       h,       10)
-    M(f.Fill,   x + 1.5, y + 1.5, w - 3,   h - 3,   9)
-    M(f.Edit,   x + 12,  y + 8,   w - 24,  h - 16)
+PlaceField(f, x, y, w, h := 34) {
+    PlaceCard(f.Border, f.Fill, x, y, w, h, 6)
+    M(f.Edit, x + 10, y + 7, w - 20, h - 14)
 }
 
 Layout(w, h) {
     W := w / SCALE, H := h / SCALE      ; work in 100%-scale units
-    SB := 200                           ; sidebar width
+    SB  := 228                          ; sidebar width
+    SBH := H - 30                       ; height above the status bar
 
     ; ---- Sidebar ----
-    M(ctl.Side,    0, 0, SB, H)
-    M(ctl.Badge,   (SB - 64) / 2, 30, 64, 64, 18)
-    M(ctl.AppName, 0, 104, SB, 26)
-    M(ctl.AppVer,  0, 130, SB, 18)
-    PlaceNav(navMain,  172)
-    PlaceNav(navAbout, 216)
-    PlaceNav(navExit,  H - 64)
-
-    pad := 28
-    x0  := SB + pad
-    cw  := W - SB - 2 * pad             ; content width
-    top := 96
-
-    ; ---- Main view ----
-    M(ctl.Head, x0, 22, cw, 34)
-    M(ctl.Sub,  x0, 58, cw, 20)
-
-    rw := 230, gap := 20                ; right column
-    lw := cw - rw - gap                 ; left column
-    rx := x0 + lw + gap
-
-    perRow := 3
-    rows := Ceil(chips.Length / perRow)
-    verY  := top
-    verH  := 72 + rows * 34 + 8
-    colH  := Max(354, H - top - pad)    ; fill the window height; 354 fits the fields and buttons
-
-    M(ctl.Card, x0, top, lw, colH, 16)
-    ix := x0 + 22, iw := lw - 44
-    M(ctl.CardTitle, ix, top + 20, iw, 24)
-    y := top + 60
-    M(ctl.NameLbl, ix, y, iw, 18)
-    PlaceField(fName, ix, y + 22, iw)
-    y += 76
-    bw := 104
-    M(ctl.LocLbl, ix, y, iw, 18)
-    PlaceField(fLoc, ix, y + 22, iw - bw - 8)
-    PlaceButton(btnBrowse, ix + iw - bw, y + 22, bw, 38)
-    y += 76
-    M(ctl.DbLbl, ix, y, iw, 18)
-    PlaceField(fDb, ix, y + 22, iw - bw - 8)
-    PlaceButton(btnDb, ix + iw - bw, y + 22, bw, 38)
-    by := top + colH - 22 - 40          ; buttons along the bottom of the card
-    PlaceButton(btnCreate, ix + iw - 220, by, 220, 40)
-
-    M(ctl.VerCard,  rx,      verY,      rw,      verH, 16)
-    M(ctl.VerTitle, rx + 20, verY + 18, rw - 40, 22)
-    M(ctl.VerSub,   rx + 20, verY + 40, rw - 40, 18)
-    chipW := (rw - 40 - (perRow - 1) * 8) / perRow
+    M(ctl.Side,     0,  0, SB, SBH)
+    M(ctl.SideLine, SB, 0, 1,  SBH)
+    M(ctl.Tile,     16, 16, 34, 34, ctl.Tile.Type = "Pic" ? 0 : 8)
+    M(ctl.AppName,  60, 16, SB - 72, 34)
+    PlaceNav(navMain,  64)
+    PlaceNav(navAbout, 110)
+    M(ctl.Div1,    12, 162, SB - 24, 1)
+    M(ctl.VerHead, 16, 176, SB - 32, 16)
+    M(ctl.VerSub,  16, 194, SB - 32, 18)
+    perRow := 3, gap := 6
+    chipW := (SB - 32 - (perRow - 1) * gap) / perRow
     for i, chip in chips {
         r := (i - 1) // perRow, c := Mod(i - 1, perRow)
-        M(chip, rx + 20 + c * (chipW + 8), verY + 72 + r * 34, chipW, 26, 12)
+        M(chip, 16 + c * (chipW + gap), 220 + r * 32, chipW, 26, 26)
     }
+    M(ctl.Div2, 12, SBH - 60, SB - 24, 1)
+    PlaceNav(navExit, SBH - 52)
+
+    ; ---- Top bar ----
+    mx := SB + 1, mw := W - mx
+    M(ctl.Top,     mx, 0,  mw, 48)
+    M(ctl.TopLine, mx, 48, mw, 1)
+    M(menuFile.Bg, mx + 12, 9, 48, 30, 6)
+    M(menuHelp.Bg, mx + 62, 9, 52, 30, 6)
+    PlaceButton(btnTheme, W - 12 - 36, 9, 36, 30)
+
+    ; ---- Status bar ----
+    M(ctl.StatusLine, 0,      SBH,     W,       1)
+    M(ctl.Status,     0,      SBH + 1, W,       29)
+    M(ctl.StatusL,    14,     SBH + 1, W - 170, 29)
+    M(ctl.StatusR,    W - 154, SBH + 1, 140,    29)
+
+    pad := 20
+    x0  := mx + pad
+    cw  := W - x0 - pad                 ; content width
+    top := 48 + 18
+
+    ; ---- Main view ----
+    bh := 46, hw := 140
+    M(ctl.Banner,     x0,      top, cw,               bh, 10)
+    M(ctl.BannerIcon, x0 + 12, top, 26,               bh)
+    M(ctl.BannerText, x0 + 46, top, cw - 46 - hw - 20, bh)
+    PlaceButton(btnHow, x0 + cw - hw - 8, top + 8, hw, 30)
+
+    cy := top + bh + 16
+    ch := Max(346, SBH - 18 - cy)       ; fill the window height; 346 fits the fields and button
+    PlaceCard(ctl.CardEdge, ctl.Card, x0, cy, cw, ch)
+    ix := x0 + 22, iw := cw - 44
+    M(ctl.CardTitle, ix, cy + 18, iw, 26)
+    y := cy + 56
+    M(ctl.NameLbl, ix, y, iw, 18)
+    PlaceField(fName, ix, y + 22, iw)
+    y += 72
+    bw := 118
+    M(ctl.LocLbl, ix, y, iw, 18)
+    PlaceField(fLoc, ix, y + 22, iw - bw - 8)
+    PlaceButton(btnBrowse, ix + iw - bw, y + 22, bw, 34)
+    y += 72
+    M(ctl.DbLbl, ix, y, iw, 18)
+    PlaceField(fDb, ix, y + 22, iw - bw - 8)
+    PlaceButton(btnDb, ix + iw - bw, y + 22, bw, 34)
+    PlaceButton(btnCreate, ix + iw - 230, cy + ch - 20 - 40, 230, 40, 8)
 
     ; ---- About view ----
-    M(ctl.AHead, x0, 22, cw, 34)
-    M(ctl.ASub,  x0, 58, cw, 20)
-    tw := (cw - 3 * 16) / 4, th := 150
+    M(ctl.AHead, x0, top,      cw, 30)
+    M(ctl.ASub,  x0, top + 32, cw, 20)
+    ty := top + 66, th := 118
+    tw := (cw - 3 * 12) / 4
     for i, st in STEPS {
-        tx := x0 + (i - 1) * (tw + 16)
-        M(st.Bg,   tx,      top,       tw,      th, 16)
-        M(st.Icon, tx + 18, top + 18,  40,      40, 12)
-        M(st.Head, tx + 18, top + 72,  tw - 36, 22)
-        M(st.Desc, tx + 18, top + 94,  tw - 36, 44)
+        tx := x0 + (i - 1) * (tw + 12)
+        PlaceCard(st.Edge, st.Bg, tx, ty, tw, th)
+        M(st.Num,  tx + 14, ty + 14, 30,      30, 30)
+        M(st.Head, tx + 14, ty + 52, tw - 28, 22)
+        M(st.Desc, tx + 14, ty + 74, tw - 28, 38)
     }
-    ay := top + th + 20
-    M(ctl.ACard, x0,      ay,      cw,      H - ay - pad,      16)
-    M(ctl.ABody, x0 + 24, ay + 20, cw - 48, H - ay - pad - 40)
+    ay := ty + th + 14
+    ah := Max(200, SBH - 18 - ay)
+    PlaceCard(ctl.AEdge, ctl.ACard, x0, ay, cw, ah)
+    M(ctl.ABody, x0 + 20, ay + 16,      cw - 40, ah - 16 - 64)
+    M(ctl.Badge, x0 + 20, ay + ah - 52, 32,      32, 8)
+    M(ctl.ACopy, x0 + 64, ay + ah - 56, cw - 84, 40)
 }
 
 ;======================= Views and hover ============================
@@ -642,6 +816,7 @@ SetDatabase(dir) {
     global DB_DIR := dir, DB_PATH := StrReplace(dir, "\", "/")
     global DB_NAME := Trim(IniRead(dir "\map.ini", "COMPANY-INFO", "DBNAME", ""))
     fDb.Edit.Text := dir
+    ctl.StatusL.Text := StatusText()
     ; Fill in the name from the database, unless the user already typed one.
     if (Trim(ctl.Name.Value) = "" && DB_NAME != "") {
         ctl.Name.Value := DB_NAME
